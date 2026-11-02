@@ -3,5 +3,5 @@ import Planner from './planner';
 export const dynamic = 'force-dynamic';
 export default async function Home() {
   const user = await requireChatGPTUser('/');
-  return <Planner name={user.fullName?.split(' ')[0] || user.email.split('@')[0]} />;
+  return <Planner userId={user.userId} name={user.fullName?.split(' ')[0] || user.email.split('@')[0]} />;
 }

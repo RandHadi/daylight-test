@@ -1,29 +1,31 @@
 # Daylight
 
-A private, original implementation of the daily planning workflow popularized by Sunsama. Built from scratch with React, Vinext, Cloudflare D1, and Sites authentication. It is an independent app, not affiliated with Sunsama.
+A private daily planner built with React, Vinext, Cloudflare D1 and Sites authentication. Independent of Sunsama. **This release is a substantial working implementation, not complete Sunsama parity.** See [the current checklist](docs/FEATURE-PARITY.md) for verified, partial, missing and externally blocked behavior.
 
-## Included
+## Working capabilities
 
-- Multi-day board and focused day view
-- Task capture, notes, subtasks, priorities, deadlines, channel filtering, archive/restore, and search
-- Drag tasks between days, reorder cards, and drop them onto the calendar
-- Manual timeboxing, calendar events, overlap layout, and scheduling around existing events
-- Guided daily planning, shutdown reflections, weekly objectives, and weekly review
-- Focus stopwatch with pause/resume and tracked time
-- Daily, weekday, and weekly recurrence: completing a task creates its next occurrence
-- Account-owned cloud persistence, serialized saves, optimistic revision checks, save-error recovery, and export
-- JSON backup/merge and ICS calendar export
-- Responsive layout and keyboard shortcuts
+- Multi-day board, daily view, backlog horizons/folders/priorities, search, channels and custom contexts
+- Tasks, notes, subtasks, source links, objectives, duplicate/merge, archive/trash and undo
+- Daily/weekly/monthly/custom recurring series, future occurrences without completion, future edits and stop
+- Automatic opening/midnight rollover, collision handling and configurable archive threshold
+- Multiple independent timeboxes, timebox editing, calendar pointer dragging, split scheduling, gaps, pins, reflow and playlist preview
+- Selected-day guided planning, shutdown highlights/reflections, weekly planning/objectives/review
+- Focus stopwatch, Pomodoro intervals and breaks, notes/subtasks in focus, open-app notifications
+- Date-based time ledger, saved IANA timezone, DST handling and legacy-time attribution
+- Real OpenAI-backed assistant with draft review, validated proposed edits, explicit apply and undo
+- Quick capture directives, command palette, light/dark/system themes and responsive layouts
+- Account-owned cloud persistence, serialized revision checks, local unsaved-draft recovery and online retries
+- JSON backup merge and ICS calendar import/export with duplicate prevention
 
-The first workspace contains clearly labeled examples. “Sample tasks · Start fresh” removes the examples; newly created tasks are preserved. Sample records are not imported from a real account.
+Seed records are explicitly labeled samples. Local QA records are not imported from real Sunsama data.
 
-## Current limits
+## Limits
 
-This is the first working implementation, not complete Sunsama feature parity. External Google/Outlook/Apple calendar sync, task-service integrations, desktop/mobile native apps, background notifications, collaboration, and AI assistance are not implemented. The Integrations dialog explains available exports without pretending to connect. Times use the device's local timezone. ICS export is a one-time copy; changing devices to a different timezone reinterprets the planner's wall-clock times. Weekly tracked totals are grouped by each task's planned day, rather than by a separate session ledger. Focus timing is a stopwatch, not a Pomodoro timer. There is no offline synchronization; save failures remain visible and drafts can be exported before leaving. Concurrent-tab conflicts are rejected rather than silently overwriting newer data.
+No live calendar/task-service integrations, email-to-task service, native desktop/mobile clients, global OS shortcuts, floating external focus bar, teammate collaboration or full offline synchronization. The hosted connector eligibility-discovery tool was unavailable; no connections were guessed or simulated. Calendar files are one-time copies, not live sync; recurring ICS rules are not expanded. Recurrence materializes 21 days ahead on load/save. Incomplete-day archive heuristics are simpler than Sunsama. Legacy scalar time totals cannot recover their original dates and are labeled accordingly. Browser notifications require permission and an open app.
 
-## Local development
+## Development
 
-Use Node.js 22.13 or newer. Install dependencies with `npm run install:ci`, then:
+Use Node.js 22.13 or newer. Install with `npm run install:ci`, then build and apply migrations to a fresh local database:
 
 ```sh
 npm run build
@@ -31,26 +33,31 @@ node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1
 npm run dev -- --hostname 127.0.0.1
 ```
 
-Apply the migration only once per fresh local database. The portable development server supplies a test-only sign-in at `/signin-with-chatgpt?return_to=/`. Production uses platform-owned authentication and the private Site's access policy. Never expose the development server to a public network.
+The portable preview has a test-only sign-in at `/signin-with-chatgpt?return_to=/`. Production uses Sites-owned authentication and owner-private access. Do not expose the development server publicly.
 
-## Verification
+The AI assistant uses `OPENAI_API_KEY` from an ignored `.env.local` in development and a Sites runtime secret in production. `OPENAI_MODEL` defaults to `gpt-4.1-mini`. Never place either a key or provider credential in source, browser code, the hosting manifest or an archive. Only an explicit user request in the assistant triggers an API call. Planner edits require a separate Apply click; external-provider writes are unsupported.
+
+## Checks
 
 ```sh
-node --experimental-strip-types --test tests/planner.test.ts
-node node_modules/typescript/bin/tsc --noEmit --allowImportingTsExtensions
+npm run typecheck
+npm test
 npm run build
+# With local preview running:
+python3 tests/api-smoke.py
 ```
 
-The model tests cover date boundaries, recurrence without duplicate generation, collision-free auto-scheduling, workday overflow, timebox replacement, task movement, single-credit focus tracking, and ICS escaping. Local browser checks cover task/subtask creation, reload persistence, time editing, focus pause/completion, recurrence generation, guided planning, and mobile calendar navigation. Local API checks verify unauthenticated access rejection, same-origin writes, payload validation, and stale-revision rejection.
+The checklist records automated and browser verification separately. Browser file-picker automation stalled during ICS upload verification; parser/merge tests passed. Hosted user-session verification is distinct from local checks.
 
-## Source layout
+## Source
 
-- `app/planner.tsx`: app views and task/event editors
-- `app/globals.css`: responsive interface styling
-- `lib/planner-model.ts`: planner operations and calendar export
-- `lib/state-schema.ts`: data validation
-- `app/api/planner/route.ts`: authenticated storage API with revision checks
-- `db/schema.ts` and `drizzle/`: database schema and migrations
-- `.openai/hosting.json`: Site identity and D1 binding
+- `app/planner.tsx`: main views and persistence
+- `app/planner-features.tsx`: recurrence, focus, assistant, weekly rituals, import and organization UI
+- `lib/planner-model.ts`, `lib/planner-advanced.ts`: core operations, lifecycle, scheduling and time ledger
+- `lib/calendar-time.ts`, `lib/calendar-import.ts`: timezone conversion and ICS import
+- `lib/state-schema.ts`: backward-compatible validation
+- `lib/assistant-contract.ts`, `app/api/assistant/route.ts`: validated AI drafts and authenticated server API
+- `app/api/planner/route.ts`, `db/`, `drizzle/`: per-account storage with optimistic revisions
+- `.openai/hosting.json`: existing Site identity; retain it when deploying
 
-To deploy changes to the existing Site, preserve the project ID and use the Sites source/build/deploy workflow. The archive excludes installed packages, runtime databases, preview cookies, and Git credentials.
+Use the Sites source/build/deploy workflow and preserve the private audience. Credentials, installed dependencies and runtime databases are excluded from packaged source.
