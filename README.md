@@ -16,12 +16,13 @@ A private daily planner built with React, Vinext, Cloudflare D1 and Sites authen
 - Quick capture directives, selected-task keyboard actions, command palette, light/dark/system themes and responsive layouts
 - Account-owned cloud persistence, serialized revision checks, local unsaved-draft recovery and online retries
 - JSON backup merge and ICS calendar import/export with duplicate prevention
+- Direct Google Calendar OAuth, encrypted server tokens, selected-calendar refresh, all-day events and explicit owned-calendar timebox publishing (provider setup and live consent still pending)
 
 Seed records are explicitly labeled samples. Local QA records are not imported from real Sunsama data.
 
 ## Limits
 
-No live calendar/task-service integrations, email-to-task service, native desktop/mobile clients, global OS shortcuts, floating external focus bar, teammate collaboration or full offline synchronization. The hosted connector eligibility-discovery tool was unavailable; no connections were guessed or simulated. Calendar files are one-time copies, not live sync; recurring ICS rules are not expanded. Recurrence materializes 21 days ahead on load/save. Incomplete-day archive heuristics are simpler than Sunsama. Legacy scalar time totals cannot recover their original dates and are labeled accordingly. Browser notifications require permission and an open app.
+Google Calendar integration code is implemented; Google app registration, credentials, consent and live verification are still pending. There are no other live calendar/task-service integrations, email-to-task service, native desktop/mobile clients, global OS shortcuts, floating external focus bar, teammate collaboration or full offline synchronization. The hosted connector eligibility-discovery tool was unavailable; no connections were guessed or simulated. Google refresh polls the selected 42-day window every five minutes while the app is visible; there are no push webhooks, background sync, automatic bidirectional task updates or deletion propagation. Calendar files are one-time copies; recurring ICS rules are not expanded. Recurrence materializes 21 days ahead on load/save. Incomplete-day archive heuristics are simpler than Sunsama. Legacy scalar time totals cannot recover their original dates and are labeled accordingly. Browser notifications require permission and an open app.
 
 ## Development
 
@@ -30,12 +31,13 @@ Use Node.js 22.13 or newer. Install with `npm run install:ci`, then build and ap
 ```sh
 npm run build
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_perfect_rockslide.sql
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_magical_prowler.sql
 npm run dev -- --hostname 127.0.0.1
 ```
 
 The portable preview has a test-only sign-in at `/signin-with-chatgpt?return_to=/`. Production uses Sites-owned authentication and owner-private access. Do not expose the development server publicly.
 
-The AI assistant uses `OPENAI_API_KEY` from an ignored `.env.local` in development and a Sites runtime secret in production. `OPENAI_MODEL` defaults to `gpt-4.1-mini`. Never place either a key or provider credential in source, browser code, the hosting manifest or an archive. Only an explicit user request in the assistant triggers an API call. Planner edits require a separate Apply click; external-provider writes are unsupported.
+The AI assistant uses `OPENAI_API_KEY` from an ignored `.env.local` in development and a Sites runtime secret in production. `OPENAI_MODEL` defaults to `gpt-4.1-mini`. Never place either a key or provider credential in source, browser code, the hosting manifest or an archive. Only an explicit user request in the assistant triggers an API call. Planner edits require a separate Apply click; Google publishing is a separate explicit action and never runs through the assistant. Google event titles and identifiers are omitted from AI context; only busy/free time is sent.
 
 ## Checks
 
@@ -61,3 +63,7 @@ The checklist records automated and browser verification separately. Browser fil
 - `.openai/hosting.json`: existing Site identity; retain it when deploying
 
 Use the Sites source/build/deploy workflow and preserve the private audience. Credentials, installed dependencies and runtime databases are excluded from packaged source.
+
+## Google Calendar setup
+
+See [Google setup and operational limits](docs/GOOGLE-CALENDAR.md). Provider credentials belong only in ignored local environment files or Sites runtime secrets.

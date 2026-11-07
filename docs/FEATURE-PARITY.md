@@ -35,7 +35,7 @@ Statuses describe behavior, not a percentage: **Verified** means the stated Dayl
 | C07 | Daily time ledger | Verified | Pause/switch/finish record once; sessions split at saved-timezone midnight; moving a task does not move history. Legacy totals retain explicit approximate attribution. |
 | C08 | Subtask timing | Verified | Subtask planned/actual time, individual timers, switching/completion, promotion and per-day corrections. Parent estimates avoid double counting; ledger identity survives series edits. Unit and browser verified. |
 | C09 | Calendar routing/settings | Partial | Internal busy/free events, pinned/flexible sessions; no destination-provider routing or shared-event privacy controls. |
-| C10 | Live calendar integrations | Blocked | Sites eligibility discovery is unavailable in this session. No Google/Outlook/Apple/CalDAV connector was declared or simulated. ICS import/export is a one-time transfer only. |
+| C10 | Live calendar integrations | Partial / setup pending | Direct Google OAuth/read-refresh/explicit timebox publishing implemented and locally tested. Google registration, credentials, consent and live round-trip remain pending. No Outlook/Apple/CalDAV integration. |
 | C11 | Meeting import | Partial | Events become tasks with identity and duplicate prevention. ICS paste preview/import/reimport browser verified; file-picker automation stalled. No live automatic event import or RRULE expansion. |
 | C12 | Timezone/time format | Partial | Saved IANA timezone, DST-aware exports/sessions/today and configurable 12/24-hour display. Travel prompt absent. |
 | R01 | Manual daily ritual | Partial | Selected/future-day planning, capacity, scheduling and completion work. Browser-tested returning to ritual after adding a task. No external task import/share step. |
@@ -64,11 +64,11 @@ Statuses describe behavior, not a percentage: **Verified** means the stated Dayl
 
 ## External integration inventory
 
-All live integrations below remain **Missing/Blocked**. No provider logo or file export is counted as a connection:
+Google Calendar has a direct OAuth implementation with live activation pending. All other integrations below remain **Missing/Blocked**. No provider logo or file export is counted as a connection:
 
-Google Calendar, Outlook Calendar, Apple/iCloud, CalDAV, Gmail, Outlook Email, Asana, ClickUp, GitHub, Jira, Linear, MCP, Microsoft Planner, Microsoft Teams, Microsoft To Do, Monday.com, Notion, Todoist, Trello, Slack, Zapier, Toggl Track, Apple Reminders and Google Tasks. Email forwarding and external activity summaries also remain absent.
+Outlook Calendar, Apple/iCloud, CalDAV, Gmail, Outlook Email, Asana, ClickUp, GitHub, Jira, Linear, MCP, Microsoft Planner, Microsoft Teams, Microsoft To Do, Monday.com, Notion, Todoist, Trello, Slack, Zapier, Toggl Track, Apple Reminders and Google Tasks. Email forwarding and external activity summaries also remain absent.
 
-The Sites integration instructions require `list_plugin_eligibility` before declaring a connector. That capability was not exposed in the current tool inventory. Native ChatGPT connectors alone do not establish permission to use them in a hosted Site. Implementing a separate provider OAuth stack would require approved provider app registrations, callback URLs, scopes and account consent.
+The Sites integration instructions require `list_plugin_eligibility` before declaring a connector. That capability was not exposed in the current tool inventory. Native ChatGPT connectors alone do not establish permission to use them in a hosted Site. The user authorized a separate Google OAuth stack. Its implementation is complete locally; approved provider registration, secure credentials and account consent are still prerequisites for live verification. See GOOGLE-CALENDAR.md.
 
 ## Verified release checks
 
@@ -85,3 +85,7 @@ The Sites integration instructions require `list_plugin_eligibility` before decl
 2. Complete Partial web behavior rows, contextual command actions, Parallel Time beta and richer ritual configuration.
 3. Build, sign and test native apps for global capture, menu/tray and floating focus features.
 4. Complete exact visual/workflow comparisons, accessibility audits, provider consent and real-device tests before any full-parity claim.
+
+## Direct Google implementation validation · November 7
+
+58 automated cases passed, including 11 new Google encryption, PKCE, timezone/DST, pagination, cancellation reconciliation, schema preservation and explicit publish/idempotence cases. 17 local API checks passed. Local browser checks verified setup status, timed/all-day event display, read-only event details and meeting-to-task import using temporary fixtures; fixtures were restored afterward. Provider authorization, actual calendar reads/token refresh and external publishing remain unverified until Google setup is approved.

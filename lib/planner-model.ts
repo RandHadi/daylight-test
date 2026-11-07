@@ -71,6 +71,11 @@ export type Task = {
     sourceUrl?: string;
 };
 export type Block = {
+    provider?: 'google';
+    externalCalendarId?: string;
+    externalEventId?: string;
+    externalUrl?: string;
+    allDay?: boolean;
     id: string;
     taskId?: string;
     title: string;
