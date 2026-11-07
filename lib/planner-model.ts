@@ -5,7 +5,11 @@ export type RecurrenceRule = {
     weekdays: number[];
     until: string;
 };
+export type WorkWindow = { enabled: boolean; start: number; end: number };
+export type Subtask = { id: string; title: string; done: boolean; minutes?: number; actual?: number; mergedTaskId?: string; seriesKey?: string };
 export type TimeEntry = {
+    subtaskId?: string;
+    originalSubtaskId?: string;
     id: string;
     taskId: string;
     title: string;
@@ -29,6 +33,7 @@ export type Channel = {
     color: string;
     context: string;
     disabled?: boolean;
+    hours?: WorkWindow[];
 };
 export type Task = {
     id: string;
@@ -39,11 +44,7 @@ export type Task = {
     actual: number;
     done: boolean;
     notes: string;
-    subtasks: {
-        id: string;
-        title: string;
-        done: boolean;
-    }[];
+    subtasks: Subtask[];
     priority: 'low' | 'normal' | 'important' | 'urgent';
     recurrence: 'none' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'custom';
     due: string;
@@ -63,6 +64,9 @@ export type Task = {
     folder?: string;
     pinned?: boolean;
     preferred?: number;
+    rigid?: boolean;
+    unallocatedMinutes?: number;
+    mergedInto?: string;
     deleted?: string;
     sourceUrl?: string;
 };
@@ -78,8 +82,10 @@ export type Block = {
     pinned?: boolean;
     busy?: boolean;
     sourceUid?: string;
+    originalTaskId?: string;
 };
 export type Objective = {
+    weeks?: string[];
     id: string;
     title: string;
     week: string;
@@ -112,11 +118,19 @@ export type State = {
         defaultChannel?: string;
         personalContexts?: string[];
         weekdayCapacity?: number[];
+        weekdayHours?: WorkWindow[];
+        persistPriorities?: Task['priority'][];
+        timeFormat?: '12' | '24';
+        shortcuts?: boolean;
+        planningReminder?: { enabled: boolean; minute: number; weekdays: number[] };
+        shutdownReminder?: { enabled: boolean; minute: number; weekdays: number[] };
+        closingMessage?: string;
     };
     reflections: Record<string, string>;
     planned: string[];
     timer: {
         taskId: string;
+        subtaskId?: string;
         started: number | null;
         seconds: number;
         segments?: {
@@ -139,6 +153,8 @@ export type State = {
     }[];
     lastMaintenance?: string;
     breakUntil?: number | null;
+    reminderDismissals?: Record<string, number>;
+    shutdownTimes?: Record<string, number>;
 };
 export const uid = () => crypto.randomUUID();
 export function dateKey(date = new Date()): string { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
@@ -146,7 +162,7 @@ export function fromKey(value: string): Date { return new Date(`${value}T12:00:0
 export function shiftDate(value: string, days: number): string { const d = fromKey(value); d.setDate(d.getDate() + days); return dateKey(d); }
 export function weekOf(value: string): string { const d = fromKey(value); return shiftDate(value, -((d.getDay() + 6) % 7)); }
 export function duration(m: number): string { const n = Math.round(m); return n >= 60 ? `${Math.floor(n / 60)}h${n % 60 ? ` ${n % 60}m` : ''}` : `${n}m`; }
-export function clockLabel(minutes: number): string { const h = Math.floor(minutes / 60); return `${h % 12 || 12}:${String(minutes % 60).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`; }
+export function clockLabel(minutes: number, format: '12' | '24' = '12'): string { if(format === '24') return inputTime(minutes);  const h = Math.floor(minutes / 60); return `${h % 12 || 12}:${String(minutes % 60).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`; }
 export function inputTime(minutes: number): string { return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`; }
 export function parseTime(value: string): number { const [h, m] = value.split(':').map(Number); return h * 60 + m; }
 export function task(title: string, day: string | null, channel = 'product', minutes = 30): Task { return { id: uid(), title, date: day, channel, minutes, actual: 0, done: false, notes: '', subtasks: [], priority: 'normal', recurrence: 'none', due: '', archived: false }; }
@@ -190,7 +206,7 @@ export function finishTimer(s: State, now = Date.now()): void {
                 const end = Math.min(segment.end, midnight > start ? midnight : start + 86400000);
                 const seconds = Math.floor((end - start) / 1000);
                 if (seconds > 0) {
-                    s.sessions.push({ id: uid(), taskId: t.id, title: t.title, channel: t.channel, day, seconds, started: start, ended: end, kind: 'timer' });
+                    s.sessions.push({ id: uid(), taskId: t.id, subtaskId: timer.subtaskId, title: t.title, channel: t.channel, day, seconds, started: start, ended: end, kind: 'timer' });
                     recorded += seconds;
                 }
                 start = end;
@@ -198,8 +214,10 @@ export function finishTimer(s: State, now = Date.now()): void {
         }
         const legacy = Math.max(0, timer.seconds - recorded);
         if (legacy)
-            s.sessions.push({ id: uid(), taskId: t.id, title: t.title, channel: t.channel, day: zonedParts(now, tz).day, seconds: legacy, started: now - legacy * 1000, ended: now, kind: 'timer' });
+            s.sessions.push({ id: uid(), taskId: t.id, subtaskId: timer.subtaskId, title: t.title, channel: t.channel, day: zonedParts(now, tz).day, seconds: legacy, started: now - legacy * 1000, ended: now, kind: 'timer' });
         t.actual += timer.seconds / 60;
+        const sub = t.subtasks.find(st => st.id === timer.subtaskId);
+        if (sub) sub.actual = (sub.actual || 0) + timer.seconds / 60;
     }
     s.timer = null;
 }
@@ -216,11 +234,13 @@ export function completeTask(s: State, id: string, today: string): void {
         if (t.recurrence === 'weekdays')
             while ([0, 6].includes(fromKey(day).getDay()))
                 day = shiftDate(day, 1);
-        s.tasks.push({ ...structuredClone(t), id: uid(), date: day, done: false, actual: 0, generatedFrom: id, completedOn: undefined, due: '', subtasks: t.subtasks.map(st => ({ ...st, id: uid(), done: false })) });
+        s.tasks.push({ ...structuredClone(t), id: uid(), date: day, done: false, actual: 0, generatedFrom: id, completedOn: undefined, due: '', subtasks: t.subtasks.map(st => ({ ...st, id: uid(), done: false, actual: 0 })) });
     }
 }
 export function moveTask(s: State, id: string, day: string | null): void { const t = s.tasks.find(t => t.id === id); if (t) {
     t.date = day;
+    if(day) delete t.folder;
+    if(day !== t.occurrence) t.rigid = false;
     s.blocks = s.blocks.filter(b => b.taskId !== id);
 } }
 export function scheduleTask(s: State, id: string, day: string, start: number): void { const t = s.tasks.find(t => t.id === id); if (!t)

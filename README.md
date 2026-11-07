@@ -5,15 +5,15 @@ A private daily planner built with React, Vinext, Cloudflare D1 and Sites authen
 ## Working capabilities
 
 - Multi-day board, daily view, backlog horizons/folders/priorities, search, channels and custom contexts
-- Tasks, notes, subtasks, source links, objectives, duplicate/merge, archive/trash and undo
-- Daily/weekly/monthly/custom recurring series, future occurrences without completion, future edits and stop
+- Tasks, Markdown notes, timed subtasks, source links, objectives, duplicate/merge/unmerge, archive/trash and undo
+- Daily/weekly/monthly/custom recurring series, future occurrences without completion, occurrence navigation, future/all-incomplete edits and stop
 - Automatic opening/midnight rollover, collision handling and configurable archive threshold
-- Multiple independent timeboxes, timebox editing, calendar pointer dragging, split scheduling, gaps, pins, reflow and playlist preview
-- Selected-day guided planning, shutdown highlights/reflections, weekly planning/objectives/review
-- Focus stopwatch, Pomodoro intervals and breaks, notes/subtasks in focus, open-app notifications
+- Multiple independent timeboxes, timebox editing, calendar pointer move/resize, weekday/channel hours, split scheduling, overflow choices, gaps, pins, reflow and playlist preview
+- Selected-day guided planning, shutdown highlights/reflections, weekly planning, multiweek objectives, channel/objective review and export
+- Focus stopwatch, Pomodoro intervals and breaks, subtask timing, notes, capture and upcoming meetings in focus, open-app ritual reminders
 - Date-based time ledger, saved IANA timezone, DST handling and legacy-time attribution
 - Real OpenAI-backed assistant with draft review, validated proposed edits, explicit apply and undo
-- Quick capture directives, command palette, light/dark/system themes and responsive layouts
+- Quick capture directives, selected-task keyboard actions, command palette, light/dark/system themes and responsive layouts
 - Account-owned cloud persistence, serialized revision checks, local unsaved-draft recovery and online retries
 - JSON backup merge and ICS calendar import/export with duplicate prevention
 
@@ -47,13 +47,13 @@ npm run build
 python3 tests/api-smoke.py
 ```
 
-The checklist records automated and browser verification separately. Browser file-picker automation stalled during ICS upload verification; parser/merge tests passed. Hosted user-session verification is distinct from local checks.
+The checklist records automated and browser verification separately. Browser file-picker automation stalled during ICS upload verification; parser/merge and paste-based preview/import/reimport passed. Hosted sign-in, save/reload and AI response were verified November 7. Release-specific hosted checks are recorded separately from local checks.
 
 ## Source
 
 - `app/planner.tsx`: main views and persistence
-- `app/planner-features.tsx`: recurrence, focus, assistant, weekly rituals, import and organization UI
-- `lib/planner-model.ts`, `lib/planner-advanced.ts`: core operations, lifecycle, scheduling and time ledger
+- `app/planner-features.tsx`, `app/parity-features.tsx`: recurrence, focus, assistant, weekly rituals, import and organization UI
+- `lib/planner-model.ts`, `lib/planner-advanced.ts`, `lib/planner-parity.ts`: core operations, lifecycle, scheduling and time ledger
 - `lib/calendar-time.ts`, `lib/calendar-import.ts`: timezone conversion and ICS import
 - `lib/state-schema.ts`: backward-compatible validation
 - `lib/assistant-contract.ts`, `app/api/assistant/route.ts`: validated AI drafts and authenticated server API

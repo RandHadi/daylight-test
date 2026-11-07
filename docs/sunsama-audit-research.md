@@ -101,3 +101,19 @@ Researched 2026-11-01 from Sunsama's live help catalog and complete official hel
 5. Keep integration/native/AI rows explicitly partial or missing until deployed and authenticated end-to-end. OAuth access, provider configuration, signing/distribution and physical authentication can require user action; list concrete remaining prerequisites.
 
 No completion percentage is justified by this audit. It is not a contractual specification of undocumented Sunsama behavior; ambiguities should be recorded and tested rather than silently invented.
+
+
+## November 7, 2026 follow-up
+
+Official documentation rechecked for keyboard actions, subtask/parent time accounting, recurrence edits/navigation, preferred-time scheduling, channel/day working hours and priority persistence. A read-only comparison of the installed Sunsama board informed Daylight's denser toolbar, gray work surface, daily columns, card controls and right backlog. This comparison is not a pixel-fidelity certification.
+
+- https://help.sunsama.com/docs/usage-guides/keyboard-driven-actions/keyboard-shortcuts
+- https://help.sunsama.com/docs/usage-guides/tasks/planned-and-actual-times
+- https://help.sunsama.com/docs/settings/user-settings
+- https://help.sunsama.com/docs/usage-guides/tasks/recurring-tasks
+- https://help.sunsama.com/docs/usage-guides/timeboxing/timeboxing-auto-scheduling
+- https://help.sunsama.com/docs/usage-guides/timeboxing/timeboxing-customizing-settings
+- https://help.sunsama.com/docs/usage-guides/tasks/task-priority
+- https://help.sunsama.com/docs/usage-guides/daily-planning/legacy
+
+The current documented Parallel Time beta allows adjacent parallel work to use the maximum task duration in projections. Daylight does not implement this beta. Provider integrations and native clients remain separate external work; the current checklist is authoritative about what was actually verified.
