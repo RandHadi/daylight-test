@@ -46,3 +46,4 @@
 :root[data-theme=dark] .check.checked{background:var(--green)}
 :root[data-theme=dark] .channel-filter.chosen,:root[data-theme=dark] .channel-filter:hover,:root[data-theme=dark] .segmented button.active,:root[data-theme=dark] .main-nav>button:hover{background:#383b42;color:var(--ink)}
 :root[data-theme=dark] .task-title,:root[data-theme=dark] .day-heading strong,:root[data-theme=dark] .main-nav>button,:root[data-theme=dark] .day-heading .eyebrow,:root[data-theme=dark] .card-subtasks button,:root[data-theme=dark] .calendar-event{color:var(--ink)}
+@media(max-width:760px){.board .day-column{order:0}.board .day-column.current-day{order:-1}}
