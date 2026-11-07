@@ -1,22 +1,22 @@
 # Direct Google Calendar integration
 
-Status: implementation and local validation complete; Google activation and live verification pending. This is a separate provider OAuth connection, not a Sites connector declaration.
+Status: Google registration and read/write authorization completed November 7, 2026. Hosted calendar refresh and publishing controls verified; an actual external event write has not been performed. This is a separate provider OAuth connection, not a Sites connector declaration.
 
-## Registration prepared
+## Registration completed
 
 - Dedicated Google Cloud project: Daylight Planner (`ultra-sound-514019-a3`). No billing account was linked as part of this setup.
-- Google Calendar API enablement awaits approval of Google's API terms.
-- OAuth branding form prepared as Daylight Planner, external/testing audience, owner support/contact email. User Data Policy checkbox has not been accepted.
-- Create a Web application OAuth client after approval. Authorized redirect URI: `https://daylight-rand-planner.rand-almomen.chatgpt.site/api/google-calendar/callback`. Do not use the Sites-reserved `/callback` route. Server OAuth does not need JavaScript origins.
-- Add the owner's Google account as the sole test user. Registration does not replace Sites authentication or make Daylight public.
+- Google Calendar API enabled after explicit user approval of Google's API terms.
+- OAuth branding created as Daylight Planner, external/testing audience, owner support/contact email. User Data Policy accepted with explicit user approval.
+- Web application OAuth client created as Daylight private planner. Its only authorized redirect URI: `https://daylight-rand-planner.rand-almomen.chatgpt.site/api/google-calendar/callback`. Do not use the Sites-reserved `/callback` route. Server OAuth does not need JavaScript origins.
+- The owner's Google account is the sole test user. Registration does not replace Sites authentication or make Daylight public.
 
 ## Runtime configuration
 
-Store `GOOGLE_CLIENT_SECRET` and `GOOGLE_TOKEN_ENCRYPTION_KEY` as Sites secrets, never in source, deployment archives, browser state, or the hosting manifest. The encryption key must be 32 cryptographically random bytes encoded as base64url. Keep it stable; changing it requires reconnecting existing accounts.
+`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `GOOGLE_TOKEN_ENCRYPTION_KEY` are configured as Sites secrets (environment revision 2). Never include them in source, deployment archives, browser state, or the hosting manifest. The encryption key must be 32 cryptographically random bytes encoded as base64url. Keep it stable; changing it requires reconnecting existing accounts.
 
-Set `GOOGLE_CLIENT_ID` and `DAYLIGHT_PUBLIC_URL` (exact published origin) as server environment variables. The client ID is public but belongs in runtime configuration. For isolated development, use a separate authorized localhost callback and ignored `.env.local` configuration. Preserve existing OpenAI settings.
+`DAYLIGHT_PUBLIC_URL` is configured as the exact published origin. The client ID is public but is also stored as a secret here. For isolated development, use a separate authorized localhost callback and ignored `.env.local` configuration. Preserve existing OpenAI settings.
 
-Apply the generated `0001_magical_prowler.sql` migration. It adds two tables without changing existing planner data. Sites applies tracked migrations during deployment.
+The generated `0001_magical_prowler.sql` migration is deployed. It adds two tables without changing existing planner data. Sites applies tracked migrations during deployment.
 
 ## Permissions and handling
 
@@ -37,12 +37,12 @@ Event titles/times are stored in the account-owned planner and may appear in tha
 - Moving/deleting a timebox does not automatically move/delete its Google event. Publish again for updates; remove obsolete events in Google. Google-side changes do not move local timeboxes. Disconnect retains published events and imported tasks.
 - Testing-mode Google OAuth refresh tokens generally expire after seven days for these scopes. Production/personal-use verification requirements need to be resolved before promising unattended long-term access.
 
-## Live acceptance checks still required
+## Live verification
 
-1. Finish approved registration and securely configure runtime variables, then deploy.
-2. Connect through the published app with the owner's Google consent; verify email/calendar selection without exposing tokens.
-3. Verify a real recurring/timed/all-day event, refresh after an edit, reload and confirm saved results.
-4. Verify token refresh and a reconnect/cancel flow without damaging planner data.
-5. With explicit user authorization for the target event/calendar, publish a disposable timebox, update it once, and confirm no duplicate or invitation.
+- Google registration, sole test-user access, credential storage and private deployment completed.
+- Hosted read authorization, initial refresh and read-to-write scope upgrade completed through Google consent.
+- Daylight exposes owned-calendar destinations and Publish/update controls; the initial window refresh completed without an error.
+- Still to verify: a controlled real event edit/cancellation, token refresh after access-token expiry, and an explicitly chosen disposable timebox publish/update. Provider writes were not triggered merely to verify a permission grant.
+- Local automated tests cover recurrence expansion, all-day/multi-day/DST handling, encryption, pagination, safe reconciliation, deterministic publishing, ETag checks and ambiguous-write handling.
 
 References: [Google web-server OAuth](https://developers.google.com/identity/protocols/oauth2/web-server), [Calendar scopes](https://developers.google.com/workspace/calendar/api/auth), [events.list](https://developers.google.com/workspace/calendar/api/v3/reference/events/list), [OAuth best practices](https://developers.google.com/identity/protocols/oauth2/resources/best-practices).

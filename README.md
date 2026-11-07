@@ -16,7 +16,7 @@ A private daily planner built with React, Vinext, Cloudflare D1 and Sites authen
 - Quick capture directives, selected-task keyboard actions, command palette, light/dark/system themes and responsive layouts
 - Account-owned cloud persistence, serialized revision checks, local unsaved-draft recovery and online retries
 - JSON backup merge and ICS calendar import/export with duplicate prevention
-- Direct Google Calendar OAuth, encrypted server tokens, selected-calendar refresh, all-day events and explicit owned-calendar timebox publishing (provider setup and live consent still pending)
+- Direct Google Calendar OAuth, encrypted server tokens, selected-calendar refresh, all-day events and explicit owned-calendar timebox publishing (Google read/write authorization completed; live refresh verified)
 
 Seed records are explicitly labeled samples. Local QA records are not imported from real Sunsama data.
 
