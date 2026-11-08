@@ -75,6 +75,7 @@ export type Task = {
 };
 export type TaskAttachment = { id: string; name: string; size: number; type: string };
 export type Block = {
+    busyOnly?: boolean;
     provider?: 'google';
     externalCalendarId?: string;
     externalEventId?: string;

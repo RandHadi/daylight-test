@@ -15,7 +15,7 @@ export async function POST(request: Request) { const user = await getChatGPTUser
     catch {
         return Response.json({ error: 'Invalid request.' }, { status: 400, headers });
     }
-    if (!body || !['read', 'write'].includes(body.mode))
+    if (!body || !['read', 'write', 'busy'].includes(body.mode))
         return Response.json({ error: 'Invalid connection request.' }, { status: 400, headers });
     return Response.json({ url: await beginOAuth(user.userId, body.mode) }, { headers });
 }

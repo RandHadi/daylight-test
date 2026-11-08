@@ -154,3 +154,9 @@ Validation: 83 unit tests and TypeScript checks passed. Local browser verificati
 - Grouping changes display only. The source task, Google event, saved timeboxes, and time ledger remain intact; a grouped-card dialog opens each source's details.
 - Regression coverage includes the reported three-card case, all calendar visibility combinations, mismatched intervals, multiple calendars/tasks, and overlapping actual entries. All 97 tests pass. Unchanged Google refreshes preserve block order and skip redundant planner saves.
 
+
+## Shared Google calendar availability
+
+- Shared calendars with freeBusyReader access appear in both calendar pickers, labeled Busy times only. Refresh calendar list picks up new shares.
+- A separate, incremental Google availability permission enables Freebusy API reads without requesting event details or write access. Existing event connections continue to sync while this permission is pending.
+- Busy periods use the calendar color, split across local midnight, block scheduling conflicts, and survive save/reload. Per-calendar errors preserve existing busy times. Availability periods cannot be imported as individual meeting tasks or combined with same-named task timeboxes.

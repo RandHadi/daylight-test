@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { randomSecret, seal, unseal, digest, authorizeUrl, READ_SCOPES, WRITE_SCOPE, validateWindow, eventBlocks, fetchCalendarEvents, listCalendars, applyCalendarSync, removeGoogleCalendars, googleJson, type CalendarSync } from '../lib/google-calendar.ts';
+import { randomSecret, seal, unseal, digest, authorizeUrl, READ_SCOPES, WRITE_SCOPE, BUSY_SCOPE, canReadBusy, validateWindow, eventBlocks, fetchCalendarEvents, listCalendars, applyCalendarSync, removeGoogleCalendars, googleJson, type CalendarSync } from '../lib/google-calendar.ts';
 import { publishBlock } from '../lib/google-calendar-publish.ts';
 import { initialState, type Block } from '../lib/planner-model.ts';
 import { stateSchema } from '../lib/state-schema.ts';
@@ -8,6 +8,45 @@ const calendar = { id: 'personal@example.test', name: 'Personal', color: '#779bc
 const from = '2026-11-01', to = '2026-11-10', zone = 'America/Los_Angeles';
 const event = { id: 'event1', summary: 'Meeting', start: { dateTime: '2026-11-02T09:00:00-08:00' }, end: { dateTime: '2026-11-02T10:00:00-08:00' } };
 const json = (body: unknown, status = 200) => Response.json(body, { status });
+const busyCalendar = { ...calendar, id: 'shared@example.test', accessRole: 'freeBusyReader' };
+test('busy-only authorization requests incremental read access without requesting write scope', () => {
+    const url = new URL(authorizeUrl('client', 'https://daylight.test/callback', 'state', 'challenge', 'busy'));
+    assert.deepEqual(url.searchParams.get('scope')?.split(' '), [...READ_SCOPES, BUSY_SCOPE]);
+    assert.equal(url.searchParams.get('include_granted_scopes'), 'true');
+    assert.equal(canReadBusy(READ_SCOPES.join(' ')), false);
+    assert.equal(canReadBusy(WRITE_SCOPE), false);
+    assert.equal(canReadBusy(BUSY_SCOPE), true);
+    assert.equal(canReadBusy('https://www.googleapis.com/auth/calendar.readonly'), true);
+    // The narrower calendar.freebusy scope only covers calendars the user owns.
+    assert.equal(canReadBusy('https://www.googleapis.com/auth/calendar.freebusy'), false);
+});
+test('shared availability uses Freebusy, hides event details, splits midnight, and survives save/reload', async () => {
+    const period = { start: '2026-11-02T23:30:00-08:00', end: '2026-11-03T00:30:00-08:00', summary: 'Never exposed', htmlLink: 'https://calendar.google.com/private' };
+    const fake: typeof fetch = async (input, init) => {
+        assert.equal(String(input), 'https://www.googleapis.com/calendar/v3/freeBusy');
+        assert.equal(init?.method, 'POST');
+        assert.deepEqual(JSON.parse(String(init.body)), { ...validateWindow(from, to, zone), timeZone: zone, items: [{ id: busyCalendar.id }] });
+        return json({ calendars: { [busyCalendar.id]: { busy: [period, period] } } });
+    };
+    const blocks = await fetchCalendarEvents('test', busyCalendar, from, to, zone, fake);
+    assert.deepEqual(blocks.map(b => [b.date, b.start, b.minutes]), [['2026-11-02', 1410, 30], ['2026-11-03', 0, 30]]);
+    assert(blocks.every(b => b.title === 'Busy' && b.busyOnly && b.busy && b.pinned && !b.externalEventId && !b.externalUrl));
+    assert.deepEqual(blocks, await fetchCalendarEvents('test', busyCalendar, from, to, zone, fake));
+    const state = initialState(from); state.blocks = blocks;
+    assert.equal(stateSchema.parse(JSON.parse(JSON.stringify(state))).blocks[0].busyOnly, true);
+});
+test('empty availability is valid, but missing calendars, partial errors, and invalid periods fail without clearing old blocks', async () => {
+    const body = (value: unknown) => json({ calendars: { [busyCalendar.id]: value } });
+    assert.deepEqual(await fetchCalendarEvents('test', busyCalendar, from, to, zone, async () => body({busy:[]})), []);
+    for (const value of [undefined, {}, {busy:[],errors:[{reason:'notFound'}]}, {busy:[{start:'bad',end:'bad'}]}, {busy:[{start:'2026-11-02T10:00:00Z',end:'2026-11-02T09:00:00Z'}]}]) {
+        await assert.rejects(fetchCalendarEvents('test', busyCalendar, from, to, zone, async () => body(value)), /Existing busy times were kept/);
+    }
+    const state = initialState(from);
+    state.blocks = [{id:'old-busy',provider:'google',externalCalendarId:busyCalendar.id,busyOnly:true,title:'Busy',date:from,start:540,minutes:60,color:calendar.color}];
+    const before = JSON.stringify(state);
+    applyCalendarSync(state,{from,to,blocks:[],calendarIds:[],failures:[{calendarId:busyCalendar.id,message:'Permission pending'}],fetchedAt:1,connectionRevision:1});
+    assert.equal(JSON.stringify(state),before);
+});
 test('tokens use authenticated encryption bound to the account, with fresh ciphertext', async () => {
     const key = randomSecret(), token = { accessToken: 'test-only', refreshToken: 'test-refresh' };
     const encrypted = await seal(token, key, 'alice');
@@ -75,9 +114,11 @@ test('complete paginated fetch expands recurring instances and refuses partial p
     await assert.rejects(fetchCalendarEvents('token', calendar, from, to, zone, async () => ++failures === 1 ? json({ items: [event], nextPageToken: 'next' }) : json({ error: 'test' }, 500)));
     await assert.rejects(fetchCalendarEvents('token', calendar, from, to, zone, async () => json({ items: [], nextPageToken: 'loop' })), /more events/);
 });
-test('calendar enumeration filters unreadable calendars; API requests cannot redirect credentials to arbitrary origins', async () => {
-    const c = await listCalendars('token', async () => json({ items: [{ ...calendar, summary: 'Mine', backgroundColor: '#123456' }, { id: 'limited', accessRole: 'freeBusyReader' }] }));
-    assert.equal(c.length, 1);
+test('calendar enumeration includes busy-only shares but excludes unreadable calendars; API origins are restricted', async () => {
+    const c = await listCalendars('token', async () => json({ items: [{ ...calendar, summary: 'Mine', backgroundColor: '#123456' }, { id: 'limited', summary: 'Work', accessRole: 'freeBusyReader' }, {id: 'unknown', accessRole: 'none'}, {id:'writer-limited',accessRole:'writerWithoutPrivateAccess'}] }));
+    assert.equal(c.length, 3);
+    assert.equal(c[1].accessRole, 'freeBusyReader');
+    assert.equal(c[1].name, 'Work');
     assert.equal(c[0].name, 'Mine');
     await assert.rejects(googleJson('https://attacker.test', 'secret'), /Unsupported/);
     await assert.rejects(googleJson('https://www.googleapis.com/calendar', 'token', {}, async () => json({}, 401)), /Reconnect/);

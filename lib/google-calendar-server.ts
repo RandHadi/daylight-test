@@ -4,7 +4,7 @@ import { getDb } from '@/db';
 import { googleConnections, googleOAuthAttempts, planners } from '@/db/schema';
 import { type State } from '@/lib/planner-model';
 import { publishBlock } from '@/lib/google-calendar-publish';
-import { authorizeUrl, digest, GoogleError, listCalendars, fetchCalendarEvents, randomSecret, seal, unseal, validateWindow, WRITE_SCOPE, type GoogleCalendar, type CalendarSync } from '@/lib/google-calendar';
+import { authorizeUrl, canReadBusy, type GoogleConnectMode, digest, GoogleError, listCalendars, fetchCalendarEvents, randomSecret, seal, unseal, validateWindow, WRITE_SCOPE, type GoogleCalendar, type CalendarSync } from '@/lib/google-calendar';
 type Tokens = {
     accessToken: string;
     refreshToken: string;
@@ -20,7 +20,7 @@ export function googleReturnUrl(result: string) { return config().origin + '/?go
 async function connection(userId: string) { const [row] = await getDb().select().from(googleConnections).where(eq(googleConnections.userId, userId)).limit(1); if (!row)
     throw new GoogleError('Connect Google Calendar first.', 401, true); return row; }
 export async function status(userId: string) { if (!googleConfigured())
-    return { configured: false, connected: false }; const rows = await getDb().select({ email: googleConnections.email, scopes: googleConnections.scopes, calendars: googleConnections.calendars, selected: googleConnections.selected, revision: googleConnections.revision }).from(googleConnections).where(eq(googleConnections.userId, userId)).limit(1); const row = rows[0]; return row ? { configured: true, connected: true, email: row.email, canPublish: row.scopes.split(' ').includes(WRITE_SCOPE), calendars: JSON.parse(row.calendars), selected: JSON.parse(row.selected), revision: row.revision } : { configured: true, connected: false }; }
+    return { configured: false, connected: false }; const rows = await getDb().select({ email: googleConnections.email, scopes: googleConnections.scopes, calendars: googleConnections.calendars, selected: googleConnections.selected, revision: googleConnections.revision }).from(googleConnections).where(eq(googleConnections.userId, userId)).limit(1); const row = rows[0]; return row ? { configured: true, connected: true, email: row.email, canPublish: row.scopes.split(' ').includes(WRITE_SCOPE), canReadBusy: canReadBusy(row.scopes), calendars: JSON.parse(row.calendars), selected: JSON.parse(row.selected), revision: row.revision } : { configured: true, connected: false }; }
 async function tokenRequest(parameters: Record<string, string>) { const c = config(); const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ ...parameters, client_id: c.clientId, client_secret: c.clientSecret }), signal: AbortSignal.timeout(20000) }); const b = await r.json() as any; if (!r.ok || !b.access_token)
     throw new GoogleError(b.error === 'invalid_grant' ? 'Google access expired or was revoked. Reconnect your calendar.' : 'Google could not authorize the connection. Try connecting again.', 401, true); return b; }
 async function access(userId: string) { const row = await connection(userId), c = config(); let token = await unseal<Tokens>(row.encryptedTokens, c.key, userId); if (token.expiresAt < Date.now() + 60000) {
@@ -32,7 +32,7 @@ async function access(userId: string) { const row = await connection(userId), c 
         token = await unseal<Tokens>(latest.encryptedTokens, c.key, userId);
     }
 } return { row, token: token.accessToken }; }
-export async function beginOAuth(userId: string, mode: 'read' | 'write') {
+export async function beginOAuth(userId: string, mode: GoogleConnectMode) {
     const c = config(), state = randomSecret(), verifier = randomSecret();
     const db = getDb();
     await db.delete(googleOAuthAttempts).where(lt(googleOAuthAttempts.expiresAt, Date.now()));
@@ -99,6 +99,8 @@ export async function syncCalendars(userId: string, from: string, to: string, ti
             if (!calendar)
                 continue;
             try {
+                if (calendar.accessRole === 'freeBusyReader' && !canReadBusy(row.scopes))
+                    throw new GoogleError('Enable shared calendar availability in Manage calendars to load busy times.', 403);
                 const blocks = await fetchCalendarEvents(token, calendar, from, to, timezone);
                 result.blocks.push(...blocks);
                 result.calendarIds.push(id);

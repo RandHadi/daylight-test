@@ -37,7 +37,7 @@ export function combineCalendarItems(items:CalendarItem[]):CalendarItem[]{
   for(const b of other){const key=slot(b)+b.title.normalize('NFKC').trim().replace(/\s+/g,' ').toLowerCase();exactGroups.set(key,[...(exactGroups.get(key)||[]),b]);}
   const result:CalendarItem[]=[];
   for(const group of exactGroups.values()){
-    const events=group.filter(b=>b.provider==='google'),tasks=group.filter(b=>b.taskId&&!b.allDay&&!(b.layer==='projection'&&b.virtual));
+    const events=group.filter(b=>b.provider==='google'&&!b.busyOnly),tasks=group.filter(b=>b.taskId&&!b.allDay&&!(b.layer==='projection'&&b.virtual));
     // Two calendars or two tasks with the same title/time are ambiguous: keep them separate.
     if(events.length===1&&tasks.length===1){const pair=new Set([events[0],tasks[0]]);result.push(combined([...pair]),...group.filter(b=>!pair.has(b)));}
     else result.push(...group);
