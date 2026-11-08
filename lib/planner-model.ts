@@ -36,6 +36,8 @@ export type Channel = {
     hours?: WorkWindow[];
 };
 export type Task = {
+    comments?: { id: string; body: string; author: string; at: string; attachments?: TaskAttachment[] }[];
+    activity?: { id: string; text: string; at: string }[];
     id: string;
     title: string;
     date: string | null;
@@ -70,6 +72,7 @@ export type Task = {
     deleted?: string;
     sourceUrl?: string;
 };
+export type TaskAttachment = { id: string; name: string; size: number; type: string };
 export type Block = {
     provider?: 'google';
     externalCalendarId?: string;

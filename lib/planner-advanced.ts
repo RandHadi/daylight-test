@@ -222,7 +222,7 @@ export function mergeTask(s: State, sourceId: string, targetId: string): boolean
     return true;
 }
 export function duplicateTask(s: State, id: string, day: string | null): Task | undefined { const original = s.tasks.find(t => t.id === id); if (!original)
-    return; const t = { ...structuredClone(original), id: uid(), date: day, done: false, actual: 0, recurrence: 'none' as const, seriesId: undefined, occurrence: undefined, completedOn: undefined, deleted: undefined, archived: false, sample: false, subtasks: original.subtasks.map(st => ({ ...st, id: uid(), done: false, actual: 0, mergedTaskId: undefined })) }; s.tasks.push(t); return t; }
+    return; const t = { ...structuredClone(original), id: uid(), comments: [], activity: [], date: day, done: false, actual: 0, recurrence: 'none' as const, seriesId: undefined, occurrence: undefined, completedOn: undefined, deleted: undefined, archived: false, sample: false, subtasks: original.subtasks.map(st => ({ ...st, id: uid(), done: false, actual: 0, mergedTaskId: undefined })) }; s.tasks.push(t); return t; }
 export function capture(text: string, s: State, day: string): Task {
     let title = text.trim(), date: string | null = day, minutes = 30, channel = s.settings.defaultChannel || s.channels[0].id, priority: Task['priority'] = 'normal';
     const take = (pattern: RegExp, fn: (m: RegExpMatchArray) => void) => { const m = title.match(pattern); if (m) {
@@ -257,8 +257,8 @@ export function saveTask(s:State,draft:Task,start:number|null,today:string,apply
  if(current){let desiredActual=draft.actual;const oldActual=current.actual;if(s.timer?.taskId===current.id&&s.timer.subtaskId&&!draft.subtasks.some(st=>st.id===s.timer!.subtaskId&&!st.done)){finishTimer(s);if(desiredActual===oldActual){desiredActual=current.actual;draft.actual=current.actual;}}if(desiredActual!==current.actual)setActual(s,current.id,desiredActual,draft.date||today);const changedDate=current.date!==draft.date;Object.assign(current,structuredClone(draft));for(const st of current.subtasks){const entries=(s.sessions||[]).filter(e=>e.taskId===current.id&&e.subtaskId===st.id);if(entries.length||st.actual!==undefined)st.actual=entries.reduce((n,e)=>n+e.seconds/60,0);}current.edited=true;if(changedDate)s.blocks=s.blocks.filter(b=>b.taskId!==current.id);}
  else s.tasks.push(structuredClone(draft));
  const saved=s.tasks.find(t=>t.id===draft.id)!;const remaining=s.blocks.filter(b=>b.taskId===saved.id);
- for(const b of remaining){b.title=saved.title;b.color=s.channels.find(c=>c.id===saved.channel)?.color||b.color;if(remaining.length===1&&oldMinutes!==saved.minutes)b.minutes=Math.min(saved.minutes,1440-b.start);}
- if(start!==null&&saved.date){const first=remaining.find(b=>b.id===previous?.id);if(first){first.start=Math.min(start,1440-first.minutes);first.date=saved.date;first.pinned=true;}else addTimebox(s,saved.id,saved.date,start,saved.minutes,true);}
+ for(const b of remaining){b.title=saved.title;b.color=s.channels.find(c=>c.id===saved.channel)?.color||b.color;if(remaining.length===1&&saved.minutes>0&&oldMinutes!==saved.minutes)b.minutes=Math.min(saved.minutes,1440-b.start);}
+ if(start!==null&&saved.date){const first=remaining.find(b=>b.id===previous?.id);if(first){first.start=Math.min(start,1440-first.minutes);first.date=saved.date;first.pinned=true;}else if(saved.minutes>0)addTimebox(s,saved.id,saved.date,start,saved.minutes,true);}
  else if(previous)s.blocks=s.blocks.filter(b=>b.id!==previous.id);
  if(saved.date)delete saved.folder;if(start!==null&&saved.recurrence!=='none'){saved.preferred??=start;saved.rigid??=true;}syncSeries(s,saved,applyFuture);generateOccurrences(s,today);
 }

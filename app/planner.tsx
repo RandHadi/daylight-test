@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback, type ReactNode, type FormEvent } from 'react';
 import { Sun, House, CalendarDays, Inbox, Target, BarChart3, Search, Plus, ChevronLeft, ChevronRight, ChevronDown, ArrowUpRight, MoreHorizontal, X, Check, Clock3, Play, Pause, CircleCheck, Settings, LogOut, ArrowRight, Flag, Repeat2, Archive, PanelRightClose, PanelRightOpen, Keyboard, Download, Upload, Link2, ListTodo, Sparkles, CheckCheck, GripVertical, RotateCcw, Coffee, CloudCheck, AlertCircle, LoaderCircle, Menu, Focus, Moon, CalendarPlus, SlidersHorizontal } from 'lucide-react';
 import { type State, type Task, type Block, type Objective, initialState, dateKey, fromKey, shiftDate, weekOf, duration, clockLabel, inputTime, parseTime, uid, task, completeTask, moveTask, scheduleTask, autoSchedule, timerSeconds, finishTimer, pauseTimer, exportCalendar } from '@/lib/planner-model';
-import { upgradeState, maintainDay, syncSeries, generateOccurrences, dailyActual, workMinutes, capacity, scheduleDay, sortDay, setActual, saveTask, buckets } from '@/lib/planner-advanced';
+import { upgradeState, maintainDay, syncSeries, generateOccurrences, dailyActual, workMinutes, capacity, scheduleDay, sortDay, setActual, saveTask, duplicateTask, buckets } from '@/lib/planner-advanced';
 import { zonedParts } from '@/lib/calendar-time';
 import { RuleFields, TaskOrganization, SessionsPanel, AdvancedSettings, QuickCapture, WeeklyRitual, Highlights, CalendarImport, AssistantPanel, FocusWorkspace } from './planner-features';
 import { actualOn, plannedMinutes, reconcileEstimates, startTimer, completeSubtask, promoteSubtask, recurrenceNeighbor, resizeBlock, concludeTimeboxes, reminderDue } from '@/lib/planner-parity';
@@ -11,6 +11,8 @@ import { GoogleCalendarPanel, GoogleEventDetails, useGoogleCalendar } from './go
 import { stateSchema } from '@/lib/state-schema';
 import { DayBoard } from './day-board';
 import { SunsamaImportPanel, type ImportResult } from './sunsama-import-panel';
+import { TaskDetails } from './task-details';
+import { recordTaskActivity } from '@/lib/task-details';
 import { selectPlannerDraft, applyUndo } from '@/lib/planner-sync';
 type View = 'home' | 'today' | 'backlog' | 'objectives' | 'review' | 'archive';
 type Modal = {
@@ -31,14 +33,15 @@ type Modal = {
 const dayName = (d: string) => fromKey(d).toLocaleDateString('en-US', { weekday: 'long' });
 const monthDay = (d: string) => fromKey(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 function download(name: string, content: string, type = 'application/json') { const url = URL.createObjectURL(new Blob([content], { type })); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
-function ModalShell({ children, onClose, wide = false, sheet = false, label }: {
+function ModalShell({ children, onClose, wide = false, sheet = false, taskDetails = false, label }: {
     children: ReactNode;
     onClose: () => void;
     wide?: boolean;
     sheet?: boolean;
+    taskDetails?: boolean;
     label: string;
-}) { const ref = useRef<HTMLDialogElement>(null); useEffect(() => { ref.current?.showModal(); const d = ref.current; return () => d?.close(); }, []); return <dialog aria-label={label} ref={ref} className={`modal ${wide ? 'wide' : ''} ${sheet ? 'sheet' : ''}`} onCancel={onClose} onClick={e => { if (e.target === e.currentTarget)
-    onClose(); }}><div className="modal-inside"><button className="icon modal-close" aria-label="Close dialog" onClick={onClose}><X size={19}/></button>{children}</div></dialog>; }
+}) { const ref = useRef<HTMLDialogElement>(null); useEffect(() => { ref.current?.showModal(); const d = ref.current; return () => d?.close(); }, []); return <dialog aria-label={label} ref={ref} className={`modal ${wide ? 'wide' : ''} ${sheet ? 'sheet' : ''} ${taskDetails ? 'task-dialog' : ''}`} onCancel={e => { e.preventDefault(); onClose(); }} onClick={e => { if (e.target === e.currentTarget)
+    onClose(); }}><div className="modal-inside">{!taskDetails&&<button className="icon modal-close" aria-label="Close dialog" onClick={onClose}><X size={19}/></button>}{children}</div></dialog>; }
 function IconButton({ label, children, onClick, className = '' }: {
     label: string;
     children: ReactNode;
@@ -62,6 +65,8 @@ export default function Planner({ name, userId }: {
     const resizing=useRef<{id:string;y:number;minutes:number}|null>(null);
     const draggingRef = useRef<string | null>(null);const returnToPlan=useRef(false);const blockPointer=useRef<{x:number;y:number}|null>(null);const blockWasDragged=useRef(false);
     const importing = useRef(false);
+    const taskDetailsClose = useRef<(() => boolean) | null>(null);
+    const closeModal = () => { if (modal?.type === 'task' && taskDetailsClose.current?.() === false) return; setModal(modal?.type === 'task' && returnToPlan.current ? {type:'plan'} : null); returnToPlan.current=false; };
     const undo = useRef<State | null>(null), calendarRef = useRef<HTMLDivElement>(null), fileRef = useRef<HTMLInputElement>(null);
     const notify = (s: string) => { setToast(s); };
     useEffect(() => { if (toast) {
@@ -103,6 +108,8 @@ export default function Planner({ name, userId }: {
         maintainDay(fresh, day);
         setToday(day);
         setSelected(day);
+        const linkedTask = new URL(window.location.href).searchParams.get('task');
+        if (linkedTask && fresh.tasks.some(t=>t.id===linkedTask&&!t.deleted)) setModal({type:'task',id:linkedTask});
         if (resolved.recovered) setToast('Recovered your unsaved draft.');
         dataRef.current = fresh;
         setData(fresh);
@@ -153,20 +160,20 @@ export default function Planner({ name, userId }: {
         }
     } saving.current = false; }, []);
     const change = (fn: (s: State) => void, canUndo = false) => { if (!dataRef.current || importing.current || blocked.current || refreshing.current)
-        return; if (canUndo)
+        return false; if (canUndo)
         undo.current = structuredClone(dataRef.current); const s = structuredClone(dataRef.current); fn(s); reconcileEstimates(s); if (s.settings.autoSort) {
         for (const d of new Set(s.tasks.map(t => t.date).filter(Boolean)))
             sortDay(s, d!);
     } if (s.settings.autoReschedule) {
         const now = zonedParts(Date.now(), s.settings.timezone!);
         scheduleDay(s, now.day, { reschedule: true, from: now.minute });
-    } const checked = stateSchema.safeParse(s); if (!checked.success) {
+    } recordTaskActivity(dataRef.current, s, name.split(' ')[0]||name); const checked = stateSchema.safeParse(s); if (!checked.success) {
         notify('That change contains invalid fields. Check dates, durations, or text lengths.');
-        return;
+        return false;
     } dataRef.current = s; setData(s); if(canUndo)setToast('Change made. Undo is available.'); try {
         localStorage.setItem('daylight-draft:' + userId, JSON.stringify({ state: s, revision: revision.current }));
     }
-    catch { } pending.current = true; void flush(); };
+    catch { } pending.current = true; void flush(); return true; };
     const google=useGoogleCalendar(!!data,selected,data?.settings.timezone||'UTC',change);
     useEffect(()=>{const u=new URL(window.location.href),result=u.searchParams.get('google');if(result){setModal({type:'integrations'});notify(result==='connected'?'Google Calendar connected.':result==='cancelled'?'Google connection was cancelled.':'Google connection did not finish. Try connecting again.');u.searchParams.delete('google');window.history.replaceState(null,'',u.pathname+u.search+u.hash);}},[]);
     useEffect(() => { const handle = (e: BeforeUnloadEvent) => { if (pending.current || saving.current) {
@@ -235,7 +242,7 @@ export default function Planner({ name, userId }: {
     useEffect(() => { const listener=(e:KeyboardEvent)=>{
       const k=e.key.toLowerCase(),command=e.metaKey||e.ctrlKey;
       if(command&&k==='k'){e.preventDefault();setQuery('');setModal({type:'commands'});return;}
-      if(k==='escape'){setModal(null);setMobileNav(false);return;}
+      if(k==='escape'){closeModal();setMobileNav(false);return;}
       if((e.target as HTMLElement)?.closest('input,textarea,select,[contenteditable="true"]')||e.altKey||modal||dataRef.current?.settings.shortcuts===false)return;
       const cards=Array.from(document.querySelectorAll<HTMLElement>('.task-card[data-task-id]')).filter(card=>{
         const board=card.closest('.board-scroll');if(!board)return true;
@@ -388,9 +395,17 @@ export default function Planner({ name, userId }: {
  {toast && <div className="toast" role="status"><Check size={15}/><span>{toast}</span>{undo.current && <button onClick={() => { const previous = undo.current; undo.current = null; if (previous)
         change(s => applyUndo(s, previous)); setToast('Change undone.'); }}>Undo</button>}<button aria-label="Dismiss notification" onClick={() => setToast('')}><X size={13}/></button></div>}
  <input hidden type="file" ref={fileRef} accept=".json" onChange={onImport}/>
- {modal && <ModalShell label={modal.type === 'task' ? 'Task details' : modal.type === 'plan' ? 'Daily planning' : modal.type} sheet={modal.type === 'task'} wide={['plan', 'settings', 'focus', 'assistant', 'weekly', 'sessions'].includes(modal.type)} onClose={() => {setModal(modal.type==='task'&&returnToPlan.current?{type:'plan'}:null);returnToPlan.current=false;}}>
- {modal.type === 'task' && <TaskEditor focusField={modal.focusField} key={modal.id || 'new'} data={data} initial={modal.id ? data.tasks.find(t => t.id === modal.id) : undefined} day={modal.day === undefined ? selected : modal.day} onSessions={id => setModal({ type: 'sessions', id })} onSave={(t, start, applyFuture) => { change(s => { saveTask(s,t,start,today,applyFuture); }, true);setModal(returnToPlan.current?{type:'plan'}:null);returnToPlan.current=false; notify('Task saved.'); }} onArchive={id => { change(s => { s.tasks.find(t => t.id === id)!.archived = true; s.blocks = s.blocks.filter(b => b.taskId !== id); if (s.timer?.taskId === id)
-            finishTimer(s); }, true); setModal(null); notify('Task moved to archive.'); }} onFocus={(draft,start,subId)=>{change(s=>{saveTask(s,draft,start,today);startTimer(s,draft.id,subId);},true);setModal({type:'focus'});}} onNavigate={(draft,start,direction)=>{let next:string|undefined;change(s=>{saveTask(s,draft,start,today);next=recurrenceNeighbor(s,draft.id,direction)?.id;},true);if(next)setModal({type:'task',id:next});else notify('No further occurrence in this series.');}} onPromote={(draft,start,subId)=>{let id:string|undefined;change(s=>{saveTask(s,draft,start,today);id=promoteSubtask(s,draft.id,subId)?.id;},true);if(id)setModal({type:'task',id});}}/>}
+ {modal && <ModalShell label={modal.type === 'task' ? 'Task details' : modal.type === 'plan' ? 'Daily planning' : modal.type} taskDetails={modal.type === 'task'} wide={['plan', 'settings', 'focus', 'assistant', 'weekly', 'sessions'].includes(modal.type)} onClose={closeModal}>
+ {modal.type === 'task' && <TaskDetails key={modal.id || 'new'} data={data} initial={modal.id ? data.tasks.find(t=>t.id===modal.id) : undefined} day={modal.day===undefined?selected:modal.day} today={today} author={name.split(' ')[0]||name} saveStatus={saveStatus} saveError={saveError} focusField={modal.focusField} onClose={closeModal} registerClose={handler=>{taskDetailsClose.current=handler;}}
+ onSave={(draft,start,applyFuture,close=false)=>{const accepted=change(s=>{const old=s.tasks.find(t=>t.id===draft.id),toggleDone=!!old&&old.done!==draft.done;saveTask(s,toggleDone?{...draft,done:old!.done}:draft,start,today,applyFuture);if(toggleDone)completeTask(s,draft.id,today);},true);if(accepted&&close){setModal(returnToPlan.current?{type:'plan'}:null);returnToPlan.current=false;}else if(accepted&&modal.type==='task'&&!modal.id)setModal({type:'task',id:draft.id});return accepted;}}
+ onTimer={(draft,start,subId)=>{change(s=>{saveTask(s,draft,start,today);if(s.timer?.taskId===draft.id&&s.timer.subtaskId===subId&&s.timer.started)pauseTimer(s);else startTimer(s,draft.id,subId);});}}
+ onSessions={id=>setModal({type:'sessions',id})}
+ onMoveTop={draft=>{change(s=>{saveTask(s,draft,null,today);const moved=s.tasks.find(t=>t.id===draft.id)!;s.tasks=s.tasks.filter(t=>t.id!==draft.id);s.tasks.unshift(moved);},true);}}
+ onDuplicate={(draft,start)=>{let id:string|undefined;const accepted=change(s=>{saveTask(s,draft,start,today);id=duplicateTask(s,draft.id,draft.date)?.id;},true);if(accepted&&id){setModal({type:'task',id});notify('Task duplicated.');}}}
+ onDelete={id=>{const accepted=change(s=>{const found=s.tasks.find(t=>t.id===id);if(!found)return;if(s.timer?.taskId===id)finishTimer(s);found.deleted=new Date().toISOString();s.blocks=s.blocks.filter(b=>b.taskId!==id);},true);if(accepted){setModal(null);notify('Task moved to trash. Undo is available.');}}}
+ onArchive={id=>{const accepted=change(s=>{s.tasks.find(t=>t.id===id)!.archived=true;s.blocks=s.blocks.filter(b=>b.taskId!==id);if(s.timer?.taskId===id)finishTimer(s);},true);if(accepted)setModal(null);}}
+ onNavigate={(draft,start,direction)=>{let next:string|undefined;change(s=>{saveTask(s,draft,start,today);next=recurrenceNeighbor(s,draft.id,direction)?.id;},true);if(next)setModal({type:'task',id:next});else notify('No further occurrence in this series.');}}
+ onPromote={(draft,start,subId)=>{let id:string|undefined;change(s=>{saveTask(s,draft,start,today);id=promoteSubtask(s,draft.id,subId)?.id;},true);if(id)setModal({type:'task',id});}}/>}
  {modal.type === 'event' && data.blocks.find(b=>b.id===modal.id)?.provider==='google' && <GoogleEventDetails block={data.blocks.find(b=>b.id===modal.id)!} data={data} onChange={change}/>}
  {modal.type === 'event' && data.blocks.find(b=>b.id===modal.id)?.provider!=='google' && <EventEditor key={modal.id || 'new'} initial={data.blocks.find(b => b.id === (modal as any).id)} day={selected} start={modal.start ?? 540} onSave={block => { change(s => { s.blocks = s.blocks.filter(b => b.id !== block.id); s.blocks.push(block); }, true); setModal(null); notify('Calendar event saved.'); }} onDelete={id => { change(s => { s.blocks = s.blocks.filter(b => b.id !== id); }, true); setModal(null); notify('Calendar event removed.'); }}/>}
  {modal.type === 'plan' && <div className="planning"><span className="dialog-eyebrow"><Sun size={16}/> YOUR DAILY RITUAL</span><h2>{['A fresh start.', 'What matters on this day?', 'Give your work some space.', 'Your day, with intention.'][planStep]}</h2><p className="modal-description">{['Take a breath. Let’s make a day that feels doable.', 'Choose a few things you want to move forward.', 'A realistic plan is a kind plan. Leave a little breathing room.', 'You have a plan. Now you can focus on one thing at a time.'][planStep]}</p><div className="steps">{['Look back', 'Choose tasks', 'Make time', 'Begin'].map((v, i) => <button key={v} className={i === planStep ? 'active' : i < planStep ? 'complete' : ''} onClick={() => setPlanStep(i)}><span>{i < planStep ? <Check size={12}/> : i + 1}</span>{v}</button>)}</div>
@@ -433,32 +448,6 @@ export default function Planner({ name, userId }: {
  {modal.type === 'shortcuts' && <div><span className="dialog-eyebrow"><Keyboard size={16}/> A LITTLE LESS CLICKING</span><h2>Find your flow.</h2>{[['⌘/Ctrl K', 'Command palette'], ['Q', 'Quick capture'], ['A', 'Add a task'], ['H', 'Home board'], ['T', 'Today'], ['B', 'Backlog'], ['↑ / ↓', 'Select a task'], ['⌘/Ctrl Enter', 'Open selected task'], ['Space', 'Start or pause task timer'], ['C', 'Complete selected task'], ['D', 'Defer one day'], ['Z', 'Move to backlog'], ['X / Shift X', 'Schedule / schedule without splitting'], ['W / E', 'Edit planned / daily actual time'], ['G', 'Open task source'], ['⌘/Ctrl Delete', 'Move to trash'], ['O', 'Daily shutdown'], ['P', 'Daily planning'], ['F', 'Focus on your next task'], ['/', 'Search everything'], ['Esc', 'Close a dialog']].map(([key, label]) => <div className="shortcut-row" key={key}><span>{label}</span><kbd>{key}</kbd></div>)}<p className="helper-text">Drag tasks between days, onto another task to reorder, or onto the calendar to timebox. You can also change dates and times in task details.</p></div>}
  </ModalShell>}
  </div>;
-}
-function TaskEditor({ data, initial, day, onSave, onArchive, onFocus, onSessions, onNavigate, onPromote, focusField }: {
-    data: State;
-    initial?: Task;
-    day: string | null;
-    onSave: (task: Task, start: number | null, applyFuture: boolean | 'all') => void;
-    onSessions: (id: string) => void;
-    onArchive: (id: string) => void;
-    onFocus: (draft:Task,start:number|null,subId?:string)=>void;
-    onNavigate:(draft:Task,start:number|null,direction:-1|1)=>void;
-    onPromote:(draft:Task,start:number|null,subId:string)=>void;
-    focusField?:'planned'|'actual';
-}) {
-    const [draft, setDraft] = useState<Task>(() => initial ? structuredClone(initial) : task('', day, data.channels[0].id));
-    const [start, setStart] = useState<number | null>(() => initial ? (data.blocks.find(b => b.taskId === initial.id)?.start ?? null) : null), [sub, setSub] = useState(''), [applyFuture, setApplyFuture] = useState<boolean|'all'>(false);
-    useEffect(()=>{if(focusField==='planned')document.querySelector<HTMLInputElement>('[aria-label="Planned minutes"]')?.focus();},[focusField]);
-    const edit = (v: Partial<Task>) => setDraft(t => ({ ...t, ...v }));
-    const addSub = () => { if (sub.trim()) {
-        edit({ subtasks: [...draft.subtasks, { id: uid(), title: sub.trim(), done: false }] });
-        setSub('');
-    } };
-    return <form onSubmit={e => { e.preventDefault(); if (!draft.title.trim())
-        return; onSave({ ...draft, title: draft.title.trim() }, start, applyFuture); }}><span className="dialog-eyebrow"><ListTodo size={16}/>{initial ? 'TASK DETAILS' : 'A LITTLE SOMETHING TO DO'}</span><input autoFocus aria-label="Task title" className="task-title-input" placeholder="What would you like to do?" value={draft.title} required maxLength={500} onChange={e => edit({ title: e.target.value })}/><div className="editor-grid"><label className="field">Planned for<input aria-label="Planned date" type="date" value={draft.date || ''} onInput={e => { edit({ date: e.currentTarget.value || null }); setStart(null); }}/><small>{!draft.date ? 'In your backlog' : <button type="button" className="text-button" onClick={() => { edit({ date: null }); setStart(null); }}>Move to backlog</button>}</small></label><label className="field">Channel<select value={draft.channel} onChange={e => edit({ channel: e.target.value })}>{data.channels.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label className="field">Planned time (minutes)<input aria-label="Planned minutes" type="number" min={0} max={720} step={5} disabled={draft.subtasks.some(st=>(st.minutes||0)>0)} value={plannedMinutes(draft)} onChange={e => edit({ minutes: Number(e.target.value) })}/></label><label className="field">Priority<select value={draft.priority} onChange={e => edit({ priority: e.target.value as Task['priority'] })}><option value="low">Low</option><option value="normal">Normal</option><option value="important">Priority</option><option value="urgent">Urgent</option></select></label><label className="field">Timebox on calendar<input aria-label="Timebox start" type="time" disabled={!draft.date} value={start === null ? '' : inputTime(start)} max={inputTime(1440 - draft.minutes)} onInput={e => setStart(e.currentTarget.value ? parseTime(e.currentTarget.value) : null)}/></label><label className="field">Due date<input aria-label="Due date" type="date" value={draft.due} onInput={e => edit({ due: e.currentTarget.value })}/></label><label className="field">Repeat<select value={draft.recurrence} onChange={e => edit({ recurrence: e.target.value as Task['recurrence'], rule: undefined })}><option value="none">Does not repeat</option><option value="daily">Every day</option><option value="weekdays">Every weekday</option><option value="weekly">Every week</option><option value="monthly">Every month</option><option value="custom">Custom schedule</option></select></label><label className="field">Weekly objective<select value={draft.objective || ''} onChange={e => edit({ objective: e.target.value || undefined })}><option value="">No objective</option>{data.objectives.filter(o => (o.week === weekOf(draft.date || dateKey()) || o.weeks?.includes(weekOf(draft.date || dateKey())))).map(o => <option value={o.id} key={o.id}>{o.title}</option>)}</select></label></div><NotesEditor value={draft.notes} onChange={notes=>edit({notes})}/>{initial?.seriesId&&<RecurrenceNavigation hasPrevious={data.tasks.some(t=>t.seriesId===initial.seriesId&&(t.occurrence||t.date||'')<(initial.occurrence||initial.date||''))} onNavigate={direction=>onNavigate(draft,start,direction)}/>}<div className="field"><span>Subtasks <small>{draft.subtasks.filter(s => s.done).length}/{draft.subtasks.length}</small></span><SubtaskFields draft={draft} edit={edit} activeSubtask={data.timer?.taskId===draft.id?data.timer.subtaskId:undefined} running={!!data.timer?.started} onTimer={initial?subId=>onFocus(draft,start,subId):undefined} onPromote={initial?subId=>onPromote(draft,start,subId):undefined}/>{draft.subtasks.some(st=>(st.minutes||0)>0)&&<p className="helper-text">Parent estimate: {duration(plannedMinutes(draft))}, calculated from subtasks.</p>}<div className="new-subtask"><Plus size={14}/><input placeholder="Add a subtask…" value={sub} maxLength={500} onChange={e => setSub(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') {
-        e.preventDefault();
-        addSub();
-    } }}/><button type="button" className="text-button" onClick={addSub}>Add</button></div></div>{draft.recurrence !== 'none' && <RuleFields draft={draft} edit={edit}/>}<TaskOrganization data={data} draft={draft} edit={edit}/>{initial?.seriesId && <label className="checkbox-label"><input type="checkbox" checked={!!applyFuture} onChange={e => setApplyFuture(e.target.checked)}/>Apply edits to other incomplete occurrences</label>}{initial?.seriesId&&applyFuture&&<label className="field">Apply recurrence edits to<select value={applyFuture==='all'?'all':'future'} onChange={e=>setApplyFuture(e.target.value==='all'?'all':true)}><option value="future">Future incomplete occurrences</option><option value="all">All incomplete occurrences</option></select></label>}{initial && <button className="secondary full" type="button" onClick={() => onSessions(initial.id)}>Timeboxes, tracked history & task actions</button>}{initial && <label className="field tracked-field">Tracked time (minutes)<input aria-label="Tracked minutes" type="number" min="0" max="1000000" step="any" value={draft.actual} onChange={e => edit({ actual: Number(e.target.value) })}/></label>}<div className="modal-footer">{initial ? <button type="button" className="text-button" onClick={() => onArchive(initial.id)}><Archive size={14}/>Archive task</button> : <span />}<button type="submit" className="primary">{initial ? 'Save changes' : 'Add task'}<Check size={15}/></button></div>{initial && !initial.done && <button className="secondary full" type="button" onClick={() => onFocus(draft,start)}><Play size={14}/>Focus on this task</button>}</form>;
 }
 function EventEditor({ initial, day, start, onSave, onDelete }: {
     initial?: Block;

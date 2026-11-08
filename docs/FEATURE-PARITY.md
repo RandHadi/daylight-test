@@ -95,3 +95,11 @@ The Sites integration instructions require `list_plugin_eligibility` before decl
 Fixed stale draft recovery that could relabel an old snapshot with the current revision after background calendar synchronization. Mismatched or incomplete drafts are now preserved separately while the cloud planner stays active. Conflicted tabs cannot write through background changes, and users can load the latest planner without discarding their pending draft. Idle visible tabs check for newer cloud data. The server also rejects whole-state saves that omit existing non-sample task IDs; deletion and undo use recoverable tombstones.
 
 Validation: 71 unit cases, TypeScript, 17 existing local API checks, and the targeted API regression passed. Local browser testing confirmed concurrent-edit rejection, draft preservation and successful latest-version recovery. Hosted restoration and reload verification are recorded in the release evidence outside source.
+
+## Centered task details · November 7
+
+Replaced the side sheet with a centered, expandable task dialog based on the supplied screenshots. The toolbar provides channel, priority, start-date/snooze/backlog and due-date calendars, subtasks, repeat, objectives, duplicate, recoverable delete and direct task links. Inline planned/actual time, timer start/pause, timed subtasks, notes, private comments, file attachments and new activity history are supported. Existing task edits autosave and closing flushes pending valid edits. Imported tasks retain their existing information; old creation/activity dates are not invented.
+
+Files use the private BUCKET R2 binding through authenticated, same-origin upload and account-owned download endpoints (10 MB per file). Metadata and comments live in the existing planner, with protection against older clients omitting these new fields.
+
+77 automated tests, TypeScript, local API regression checks, attachment byte-for-byte/private-access checks and local browser save/reload checks passed. Desktop, expanded and 390px mobile layouts were checked; menus, date selection, priority, planned time, subtasks, notes, comments, attachment upload, duplicate/delete, backlog positioning, direct links and timer start/pause were exercised. Hosted checks are recorded in the release evidence outside source.
