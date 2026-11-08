@@ -20,12 +20,13 @@ Statuses describe behavior, not a percentage: **Verified** means the stated Dayl
 | T10 | Merge/unmerge | Partial | New merges can be unmerged later, restoring source identity, subtasks, ledger and timeboxes. Unit/browser verified. Legacy merges lack restore metadata; nested merges and external metadata unsupported; stopped recurrence is not restarted by unmerge. |
 | T11 | URL capture | Partial | Source link field and URL detection; no connected provider metadata preview. |
 | B01 | Backlog buckets | Verified | Six horizons with filtering and task editor selection. |
-| B02 | Backlog folders | Partial | Create/filter/remove folders; scheduling clears folder. No nested folders. |
+| B02 | Backlog folders | Partial | Create from left navigation, filter all/uncategorized/specific folders, and remove in settings; new backlog tasks inherit the selected folder/horizon. Scheduling clears folder. No nested folders. |
 | B03 | Daily/backlog priorities | Verified | Four daily and five backlog priorities. Configurable per-level persistence on rollover; repeated rollover and backlog preservation tested. |
 | B04 | Auto-sort | Partial | Optional priority/preferred-time sort respects pinned tasks and running timer. Full Sunsama chronological/manual-override behavior differs. |
 | B05 | Channels/contexts | Partial | Edit name, context, color, defaults and disable/enable channels. Custom context filters. No shared/private contexts or team permissions. |
 | B06 | Work capacity | Verified | Personal context excluded from work-capacity warnings, with weekday capacities. Board totals deliberately show all planned tasks. |
 | B07 | Search/navigation | Partial | All matching task/note/subtask results, including archive; no advanced query filters. |
+| B08 | Workspace views and panels | Partial | Board plus one-day/three-day/weekday/week/month calendars, searchable channel filter, collapsible navigation/panels and persistent right tools rail. Multi-day calendar drag/resize parity remains incomplete. |
 | C01 | Timebox manipulation | Partial | Calendar pointer move and drag-resize browser verified. Independent session date/start/duration controls, 5-minute resize and pinning. Exact modifier-key/provider behavior differs. |
 | C02 | Multiple sessions | Verified | Multiple timeboxes on one or multiple days remain independent; editing task preserves them and an active timer. Browser-tested two timeboxes. |
 | C03 | Automatic scheduling | Partial | Splits around busy events, gaps, preferred times, remaining work and no-past slots. Weekday hours, channel overrides, overflow choices and no-split scheduling tested. Full provider behavior remains absent. |
@@ -44,6 +45,7 @@ Statuses describe behavior, not a percentage: **Verified** means the stated Dayl
 | R04 | Weekly objectives | Partial | Link/create tasks, complete/carry objectives while preserving multiweek identity. Full objective time-allocation workflow differs. |
 | R05 | Weekly planning | Partial | Prior objective carry, new outcomes and saved weekly journal; browser-tested persistence. No combined full ritual configuration. |
 | R06 | Weekly review | Partial | Daily ledger charts, channel/objective breakdown, saved reflections and Markdown export. External delivery/sharing absent. |
+| R09 | Analytics | Partial | Dedicated weekly channel totals, daily stacked bars, weekends, actual/planned metrics, channel/context filters and CSV export. Uses saved ledger including imported history; arbitrary date ranges and all source metrics are not implemented. |
 | R07 | Agentic planning beta | Partial | OpenAI-backed draft planning with explicit apply and undo. It uses Daylight context only; not Sunsama's connected-tool Autoplan. |
 | R08 | AI assistant | Partial | Real API with validated proposals, explicit apply/undo. Local end-to-end apply verified; hosted signed-in AI response verified November 7. Connected-tool actions absent. |
 | F01 | Focus workspace | Partial | Notes, timed subtasks, complete/next queue, capture during focus and upcoming meeting. Exact Sunsama focus display differs. |
@@ -103,3 +105,17 @@ Replaced the side sheet with a centered, expandable task dialog based on the sup
 Files use the private BUCKET R2 binding through authenticated, same-origin upload and account-owned download endpoints (10 MB per file). Metadata and comments live in the existing planner, with protection against older clients omitting these new fields.
 
 77 automated tests, TypeScript, local API regression checks, attachment byte-for-byte/private-access checks and local browser save/reload checks passed. Desktop, expanded and 390px mobile layouts were checked; menus, date selection, priority, planned time, subtasks, notes, comments, attachment upload, duplicate/delete, backlog positioning, direct links and timer start/pause were exercised. Hosted checks are recorded in the release evidence outside source.
+
+## v12 — workspace walkthrough update (November 7, 2026)
+
+Browser-observed source behavior is documented in `sunsama-walkthrough-2026-11-07.md`.
+
+- Added collapsible left navigation and an always-visible right tools rail, with collapsible Tasks, Calendar, Backlog, Objectives, and Integrations panels.
+- Added left-navigation backlog folders, grouped full backlog, and shared all/horizon/folder/uncategorized/priority filters.
+- Added a searchable channel/context filter in the workspace toolbar.
+- Added calendar one-day, three-day, weekdays, week, and month views alongside the horizontally scrolling board; completed-task visibility and device-local view preferences.
+- Added dedicated analytics with weekly channel totals, daily bars, actual/planned metrics, weekend selection, accessible data table, and CSV export based on saved history.
+- Added searchable, grouped keyboard help and panel/date/duplicate/today shortcuts. Help accurately describes Daylight's bindings; OS-global and all Sunsama-specific bindings remain incomplete.
+- Added an integrations hub for existing Google Calendar, ICS files, and Sunsama imports. New live providers explicitly deferred by the user on this turn.
+
+Validation: 80 unit tests and TypeScript checks passed. Browser checks covered all six view layouts, event date targeting, folder creation/task inheritance, analytics CSV, searchable shortcuts, panel shortcuts, view reload, and a 390px mobile layout with the rail fixed on the right.

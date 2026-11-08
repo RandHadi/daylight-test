@@ -42,16 +42,20 @@ export function DayBoard({ selected, onSelect, renderDay }: {
     useLayoutEffect(() => {
         const el = viewport.current;
         if (!el) return;
-        let previousWidth = el.clientWidth;
+        let previousWidth = 0;
+        let previousColumnWidth = 0;
         const observer = new ResizeObserver(() => {
-            if (!el.clientWidth || el.clientWidth === previousWidth) return;
+            const columnWidth = el.firstElementChild?.getBoundingClientRect().width || 0;
+            if (!el.clientWidth || !columnWidth || (el.clientWidth === previousWidth && columnWidth === previousColumnWidth)) return;
             previousWidth = el.clientWidth;
+            previousColumnWidth = columnWidth;
             if (settled.current) clearTimeout(settled.current);
             const columns = Array.from(el.children) as HTMLElement[];
             const index = columns.findIndex(column => column.dataset.dropDay === latestSelected.current);
             if (index >= 0) el.scrollLeft = index * columns[0].getBoundingClientRect().width;
         });
         observer.observe(el);
+        if (el.firstElementChild) observer.observe(el.firstElementChild);
         return () => {
             observer.disconnect();
             if (settled.current) clearTimeout(settled.current);
