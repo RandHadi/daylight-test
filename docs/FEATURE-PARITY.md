@@ -208,3 +208,5 @@ Local validation: regression tests cover idempotent repairs, manual edits, chang
 - Projection appearance follows the supplied reference: pale channel-colored fill, regular dotted pattern, rounded white outline, and a top-aligned single-line colored title. Times and projection details remain available in the tooltip and accessible name. Main and side calendars share the treatment; scheduling and recorded actual-time styling are unchanged.
 
 - Planner chrome cleanup removes the preserved-draft banner, bottom status bar, empty-day message, per-day reflection links, calendar connection strip, and calendar drag hint. Settings now opens keyboard-shortcut help and retains preserved-draft downloads in the data section. Calendar syncing and the existing shortcut commands continue working.
+
+- Auto-schedule and Reflow day are available from Calendars alongside the Task projections toggle. The right calendar no longer repeats these controls or shows My planner and the add-event plus; the clickable date and timeline event creation remain available. Local browser checks exercised both relocated actions and Undo.

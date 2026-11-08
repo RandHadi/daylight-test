@@ -3,6 +3,10 @@
 .calendars-trigger[aria-expanded=true]{background:var(--sidebar);border-color:#c8c9cd}
 .calendars-popover{position:fixed;overflow:auto;padding:15px 18px 0;background:var(--paper);border:1px solid var(--line);border-radius:6px;box-shadow:0 10px 28px #0003;z-index:60;text-align:left}
 .calendar-menu-title{font-size:13px;color:var(--muted);margin:0 0 19px}
+.calendar-planning-actions{padding-bottom:12px;margin-bottom:15px;border-bottom:1px solid var(--line)}
+.calendar-planning-actions>button{display:flex;align-items:center;gap:12px;width:100%;min-height:38px;padding:7px 3px;text-align:left;font-size:14px;border-radius:4px}
+.calendar-planning-actions>button:hover{background:var(--sidebar)}
+.calendar-planning-actions>button svg{color:var(--muted)}
 .calendars-popover h3{font:600 11px var(--font);text-transform:uppercase;margin:0 0 8px;overflow-wrap:anywhere}
 .calendars-popover>button{display:flex;align-items:center;gap:12px;width:100%;min-height:39px;text-align:left;font-size:15px;border-radius:4px;padding:6px 3px;font-weight:400}
 .calendars-popover>button:hover{background:var(--sidebar)}
