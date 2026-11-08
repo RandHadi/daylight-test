@@ -195,3 +195,12 @@ Reference: Sunsama's playlist documentation distinguishes generated projections 
 - Additional workflow/layout findings from the audit remain open. No new provider integrations are included in this batch.
 
 Local validation: regression tests cover idempotent repairs, manual edits, changed/moved/cancelled provider events, ambiguous matches, stable identities, reporting agreement, recurrence duplication and older-client field preservation. Local API checks verify read-only preview, backup fidelity, stale-revision rejection and idempotence. Synthetic browser checks verify linking, repeat enable and saved reload. Hosted verification is recorded after deployment.
+
+## Calendar layer visibility follow-up
+
+- Each calendar explains its selected day's projection count and actual-time totals. Tasks that cannot fit around busy events before the cutoff appear in a review list rather than silently disappearing.
+- Optional extended-hours projections preview remaining free time through midnight without changing work hours, tasks, or saved timeboxes. The display preference is shared by the main and side calendar.
+- Channel filters no longer let hidden unscheduled tasks consume projection slots. Saved busy events continue blocking time even when their calendar is hidden.
+- Recorded actual time stays visible independently of the board's completed-task visibility. Legacy actual totals without sessions use the same fallback ledger as reports.
+- Duration-only records are grouped under a labeled Actual summary at the top of each day, with readable task names and durations on expansion. Their clock intervals are never invented.
+- Validation: 128 unit tests pass. Local browser checks covered a full working-day cutoff, extended preview, hidden completed tasks, untimed details, and toggling both layers off and on in main/side views.

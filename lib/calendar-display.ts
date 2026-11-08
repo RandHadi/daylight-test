@@ -2,10 +2,12 @@ import {type State,type Task,type Block,shiftDate,duration} from './planner-mode
 import {scheduleDay} from './planner-advanced.ts';
 import {zonedParts,wallToEpoch} from './calendar-time.ts';
 import {linkedCalendarTask} from './calendar-links.ts';
+import {reportingEntries} from './time-ledger.ts';
 
 export type CalendarDisplay = {
   local: boolean;
   projections: boolean;
+  projectionsOutsideHours?: boolean;
   actual: boolean;
   comparison: boolean;
   completions: boolean;
@@ -14,7 +16,16 @@ export type CalendarDisplay = {
 export const defaultCalendarDisplay:CalendarDisplay={local:true,projections:true,actual:true,comparison:true,completions:true,hiddenGoogleCalendars:[]};
 export function calendarDisplay(s:State):CalendarDisplay{return {...defaultCalendarDisplay,...s.settings.calendarDisplay};}
 export type CalendarSource={id:string;label:string;detail?:string};
-export type CalendarItem=Block & {layer:'event'|'scheduled'|'projection'|'planned'|'actual'|'actual-summary'|'completion';virtual?:boolean;completed?:boolean;detail?:string;sources?:CalendarSource[];googleEventId?:string};
+export type CalendarItem=Block & {layer:'event'|'scheduled'|'projection'|'planned'|'actual'|'actual-summary'|'completion';virtual?:boolean;completed?:boolean;detail?:string;actualMinutes?:number;sources?:CalendarSource[];googleEventId?:string};
+type DisplayOptions={filter?:(t:Task)=>boolean;completed?:boolean;now?:number;blocks?:Block[]};
+export function calendarProjection(s:State,day:string,{filter=()=>true,now=Date.now(),blocks=s.blocks}:DisplayOptions={}) {
+  const prefs=calendarDisplay(s),today=zonedParts(now,s.settings.timezone||'UTC');
+  if(!prefs.projections||day<today.day)return {blocks:[] as Block[],missed:[] as string[]};
+  const scope:State={...s,tasks:s.tasks.filter(t=>t.date===day&&!t.archived&&!t.deleted&&filter(t)),blocks:blocks.filter(b=>b.date===day),sessions:[],series:[]};
+  const saved=new Set(scope.blocks.map(b=>b.id));
+  const result=scheduleDay(scope,day,{project:true,from:day===today.day?today.minute:0,allowOutside:!!prefs.projectionsOutsideHours});
+  return {blocks:result.blocks.filter(b=>!saved.has(b.id)),missed:result.missed};
+}
 
 const slot=(b:Block)=>JSON.stringify([b.date,b.start,b.minutes,!!b.allDay]);
 const matchingSlot=(b:Block)=>slot(b)+b.title.normalize('NFKC').trim().replace(/\s+/g,' ').toLowerCase();
@@ -22,7 +33,7 @@ const source=(b:CalendarItem):CalendarSource=>({id:b.id,label:b.provider==='goog
 function combined(rows:CalendarItem[]):CalendarItem{
   const base=rows.find(b=>b.layer==='actual')||rows.find(b=>b.taskId)||rows[0];
   const sources=rows.flatMap(b=>b.sources||[source(b)]).sort((a,b)=>['Google Calendar','Planned time','Actual time'].indexOf(a.label)-['Google Calendar','Planned time','Actual time'].indexOf(b.label));
-  return {...base,virtual:true,sources,googleEventId:rows.find(b=>b.provider==='google')?.id||base.googleEventId,detail:[...new Set(sources.map(s=>s.label.replace(' Calendar','').replace(' time','')))].join(' · ')};
+  return {...base,actualMinutes:rows.reduce((n,b)=>n+(b.actualMinutes||0),0)||undefined,virtual:true,sources,googleEventId:rows.find(b=>b.provider==='google')?.id||base.googleEventId,detail:[...new Set(sources.map(s=>s.label.replace(' Calendar','').replace(' time','')))].join(' · ')};
 }
 /** Collapse exact display matches only; source records and time ledgers stay independent. */
 export function combineCalendarItems(items:CalendarItem[]):CalendarItem[]{
@@ -47,17 +58,18 @@ export function combineCalendarItems(items:CalendarItem[]):CalendarItem[]{
 }
 
 /** Display-only layers. Hiding a calendar never changes saved blocks or busy time. */
-export function calendarItems(s:State,day:string,{filter=()=>true,completed=true,now=Date.now(),blocks=s.blocks}:{filter?:(t:Task)=>boolean;completed?:boolean;now?:number;blocks?:Block[]}={}):CalendarItem[]{
-  const prefs=calendarDisplay(s),zone=s.settings.timezone||'UTC',today=zonedParts(now,zone),tasks=new Map(s.tasks.map(t=>[t.id,t]));
+export function calendarItems(s:State,day:string,{filter=()=>true,completed=true,now=Date.now(),blocks=s.blocks}:DisplayOptions={}):CalendarItem[]{
+  const prefs=calendarDisplay(s),zone=s.settings.timezone||'UTC',tasks=new Map(s.tasks.map(t=>[t.id,t]));
   const allowed=(t:Task|undefined)=>!!t&&!t.deleted&&(completed||!t.done)&&filter(t);
+  const actualAllowed=(t:Task|undefined)=>!!t&&!t.deleted&&filter(t);
   const actual:CalendarItem[]=[],summary=new Map<string,number>();
   if(prefs.actual){
     const start=wallToEpoch(day,0,zone),end=wallToEpoch(shiftDate(day,1),0,zone);
-    const entries=[...(s.sessions||[])];
+    const entries=reportingEntries(s);
     const active=s.timer,t=active&&tasks.get(active.taskId);
     if(active&&t){for(const [i,segment]of [...(active.segments||[]),...(active.started?[{start:active.started,end:now}]:[])].entries())entries.push({id:`running:${i}`,taskId:t.id,title:t.title,channel:t.channel,day,started:segment.start,ended:segment.end,seconds:(segment.end-segment.start)/1000,kind:'timer'});}
     for(const e of entries){
-      const t=tasks.get(e.taskId);if(!allowed(t)||e.seconds<=0)continue;
+      const t=tasks.get(e.taskId);if(!actualAllowed(t)||e.seconds<=0)continue;
       // Older Sunsama imports inferred an end for manual duration-only entries.
       // Their recorded date is reliable, but their apparent clock interval is not.
       const unknownImportedTime=e.kind==='manual'&&e.id.startsWith('sunsama:')&&!e.timing;
@@ -66,9 +78,10 @@ export function calendarItems(s:State,day:string,{filter=()=>true,completed=true
       const at=zonedParts(a,zone).minute,to=b===end?1440:zonedParts(b,zone).minute;
       // A fall-back clock change can repeat an hour; keep the displayed interval positive.
       const minutes=Math.max(1,Math.min(1440-at,to>at?to-at:Math.ceil((b-a)/60000)));
-      actual.push({id:`actual:${e.id}:${day}`,taskId:t!.id,title:t!.title,date:day,start:at,minutes,color:s.channels.find(c=>c.id===t!.channel)?.color||'#709b8d',layer:'actual',virtual:true,completed:prefs.completions&&t!.done,detail:`${duration(e.seconds/60*(b-a)/(e.ended-e.started))} actual`});
+      const actualMinutes=e.seconds/60*(b-a)/(e.ended-e.started);
+      actual.push({id:`actual:${e.id}:${day}`,taskId:t!.id,title:t!.title,date:day,start:at,minutes,actualMinutes,color:s.channels.find(c=>c.id===t!.channel)?.color||'#709b8d',layer:'actual',virtual:true,completed:prefs.completions&&t!.done,detail:`${duration(actualMinutes)} actual`});
     }
-    for(const [id,minutes]of summary){const t=tasks.get(id)!;actual.push({id:`actual-summary:${id}:${day}`,taskId:id,title:t.title,date:day,start:0,minutes:1,allDay:true,color:s.channels.find(c=>c.id===t.channel)?.color||'#709b8d',layer:'actual-summary',virtual:true,completed:prefs.completions&&t.done,detail:`${duration(minutes)} actual · time not recorded`});}
+    for(const [id,minutes]of summary){const t=tasks.get(id)!;actual.push({id:`actual-summary:${id}:${day}`,taskId:id,title:t.title,date:day,start:0,minutes:1,actualMinutes:minutes,allDay:true,color:s.channels.find(c=>c.id===t.channel)?.color||'#709b8d',layer:'actual-summary',virtual:true,completed:prefs.completions&&t.done,detail:`${duration(minutes)} actual · time not recorded`});}
   }
   // A day total without timestamps cannot replace a scheduled interval.
   const actualTasks=new Set(actual.filter(b=>b.layer==='actual').map(b=>b.taskId));
@@ -96,12 +109,7 @@ export function calendarItems(s:State,day:string,{filter=()=>true,completed=true
     if(actualTasks.has(t!.id))return prefs.comparison?[{...b,title:t!.title,layer:'planned' as const,completed:prefs.completions&&t!.done,detail:`${duration(b.minutes)} planned`}]:[];
     return [{...b,title:t!.title,layer:'scheduled' as const,completed:prefs.completions&&t!.done,detail:`${duration(b.minutes)} scheduled`}];
   });
-  if(prefs.projections&&day>=today.day){
-    // Reuse the scheduler on a small copy; generated projections are never saved.
-    const scope:State={...s,tasks:s.tasks.filter(t=>t.date===day&&!t.archived&&!t.deleted),blocks:blocks.filter(b=>b.date===day),sessions:[],series:[]};
-    const saved=new Set(scope.blocks.map(b=>b.id));
-    for(const b of scheduleDay(scope,day,{project:true,from:day===today.day?today.minute:0}).blocks){if(saved.has(b.id)||!allowed(tasks.get(b.taskId||'')))continue;items.push({...b,id:`projection:${b.taskId}:${day}:${b.start}`,layer:'projection',virtual:true,detail:'Projected · not scheduled'});}
-  }
+  for(const b of calendarProjection(s,day,{filter,now,blocks}).blocks)items.push({...b,id:`projection:${b.taskId}:${day}:${b.start}`,layer:'projection',virtual:true,detail:prefs.projectionsOutsideHours?'Projected · extended hours':'Projected · not scheduled'});
   items.push(...actual);
   if(prefs.completions&&completed){for(const t of s.tasks){if(!allowed(t)||!t.done||(t.completedOn||t.date)!==day||visibleEventTasks.has(t.id)||items.some(b=>b.taskId===t.id))continue;items.push({id:`completed:${t.id}:${day}`,taskId:t.id,title:t.title,date:day,start:0,minutes:1,allDay:true,color:s.channels.find(c=>c.id===t.channel)?.color||'#709b8d',layer:'completion',virtual:true,completed:true,detail:'Completed'});}}
   return combineCalendarItems(items);

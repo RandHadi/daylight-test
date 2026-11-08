@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {initialState,task,type State} from '../lib/planner-model.ts';
-import {calendarItems,defaultCalendarDisplay} from '../lib/calendar-display.ts';
+import {calendarItems,calendarProjection,defaultCalendarDisplay} from '../lib/calendar-display.ts';
 import {stateSchema} from '../lib/state-schema.ts';
 import {applyCalendarSync} from '../lib/google-calendar.ts';
 const day='2026-11-07',now=Date.parse('2026-11-07T08:00:00Z');
@@ -25,6 +25,40 @@ test('legacy imported manual durations no longer draw inferred time slots',()=>{
 });
 test('completion markers include archived history while respecting task and channel filters',()=>{const s=setup();s.tasks[0].done=true;s.tasks[0].archived=true;s.tasks[0].completedOn=day;assert.equal(calendarItems(s,day,{now})[0].layer,'completion');assert.equal(calendarItems(s,day,{now,completed:false}).length,0);assert.equal(calendarItems(s,day,{now,filter:()=>false}).length,0);s.tasks[0].deleted=new Date(now).toISOString();assert.equal(calendarItems(s,day,{now}).length,0);});
 test('calendar settings round trip through the saved planner schema',()=>{const s=setup();s.settings.calendarDisplay!.hiddenGoogleCalendars=['personal@example.test'];s.settings.calendarDisplay!.actual=false;assert.deepEqual(stateSchema.parse(s).settings.calendarDisplay,s.settings.calendarDisplay);});
+
+test('full work hours explain missing projections and extended preview never writes schedules',()=>{
+ const s=setup();s.blocks=[{id:'busy',title:'Busy afternoon',date:day,start:660,minutes:360,color:'#709b8d',provider:'google'}];
+ const at=Date.parse(day+'T13:00:00Z'),before=JSON.stringify(s);
+ assert.deepEqual(calendarProjection(s,day,{now:at}).missed,[s.tasks[0].id]);
+ assert.equal(calendarItems(s,day,{now:at}).filter(i=>i.layer==='projection').length,0);
+ assert.equal(JSON.stringify(s),before);
+ s.settings.calendarDisplay!.projectionsOutsideHours=true;const extended=JSON.stringify(s);
+ assert.equal(calendarProjection(s,day,{now:at}).missed.length,0);
+ const projected=calendarItems(s,day,{now:at}).find(i=>i.layer==='projection')!;
+ assert.equal(projected.start,1020);assert.equal(projected.minutes,60);assert.equal(projected.virtual,true);
+ assert.equal(JSON.stringify(s),extended);assert.equal(stateSchema.parse(s).settings.calendarDisplay!.projectionsOutsideHours,true);
+ s.settings.calendarDisplay!.projections=false;assert.equal(calendarProjection(s,day,{now:at}).blocks.length,0);
+});
+test('channel filtering gives visible tasks projection slots while hidden saved meetings remain busy',()=>{
+ const s=setup();s.tasks[0].minutes=480;s.tasks.push(task('Visible work',day,'personal',30));
+ s.blocks=[{id:'busy',title:'Hidden calendar meeting',date:day,start:540,minutes:60,color:'#709b8d',provider:'google',externalCalendarId:'hidden'}];
+ s.settings.calendarDisplay!.hiddenGoogleCalendars=['hidden'];
+ const rows=calendarItems(s,day,{now,filter:t=>t.channel==='personal'});
+ assert.equal(rows.length,1);assert.equal(rows[0].title,'Visible work');assert.equal(rows[0].start,600);
+});
+test('actual toggle shows completed history independently of board completed visibility',()=>{
+ const s=setup();tracked(s);s.tasks[0].done=true;s.tasks[0].archived=true;
+ assert.equal(calendarItems(s,day,{now,completed:false}).filter(b=>b.layer==='actual').length,1);
+ assert.equal(calendarItems(s,day,{now,completed:false,filter:()=>false}).length,0);
+ s.settings.calendarDisplay!.actual=false;assert.equal(calendarItems(s,day,{now,completed:false}).length,0);
+});
+test('legacy actual totals render once with duration metadata and no invented clock interval',()=>{
+ const s=setup();s.tasks[0].actual=45;s.tasks[0].done=true;
+ let actual=calendarItems(s,day,{now}).filter(b=>b.layer.startsWith('actual'));
+ assert.equal(actual.length,1);assert.equal(actual[0].actualMinutes,45);assert.equal(actual[0].allDay,true);
+ tracked(s);actual=calendarItems(s,day,{now}).filter(b=>b.layer.startsWith('actual'));
+ assert.equal(actual.length,1);assert.equal(actual[0].layer,'actual');assert.equal(actual[0].actualMinutes,30);
+});
 
 test('turning projections off hides suggestions but keeps saved timeboxes',()=>{
   const s=setup();tracked(s);s.sessions=[];
