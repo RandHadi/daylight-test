@@ -31,6 +31,7 @@
 .calendar-event[data-calendar-sources] .calendar-layer-label,.calendar-grid-event[data-calendar-sources] .calendar-layer-label{font-weight:600;opacity:1}
 @media(max-width:760px){.calendars-trigger{font-size:10px;padding:6px;gap:4px}.calendars-popover>button{min-height:42px}.view-controls{flex-wrap:wrap}.compact-save{display:none}}
 
-.calendars-popover>button small{display:block;font-size:11px;color:var(--muted);line-height:1.5}
+.calendars-popover>button small{display:block;font-size:11px;color:var(--muted);line-height:1.5;white-space:normal}
+.calendars-popover>button:disabled{cursor:default;opacity:.6}
 .calendar-menu-footer{display:flex;flex-direction:column;gap:8px}
 .shared-calendar-help{margin:12px 0 18px}

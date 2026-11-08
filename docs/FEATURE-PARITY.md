@@ -170,3 +170,13 @@ Validation: 83 unit tests and TypeScript checks passed. Local browser verificati
 
 - Clicking the date in either right-side calendar or task board switches between the main board with a side calendar and the main calendar with a side task board. The selected date, channel filter, and zoom stay unchanged.
 - The last calendar layout is restored on return and saved with the existing per-user browser view preferences. Main board date headings continue to select their day.
+
+## Calendar display toggle corrections
+
+- Daylight Calendar controls saved local events and scheduled task timeboxes. Task projections controls only generated suggestions for remaining work. Turning either off does not rewrite schedules or busy time.
+- Task actual times controls recorded intervals and untimed day totals. Planned vs. actual adds the corresponding scheduled intervals; it is visibly inactive while actual time is off. Actual-only mode also hides a uniquely matched Google timebox, while unrelated, ambiguous and busy-only events remain independent.
+- Task completions controls completion badges and day markers, without bringing back hidden scheduled intervals. A visible linked Google event can carry the badge without a duplicate completion card. Untimed actual totals never substitute for known scheduled intervals.
+- Menu descriptions explain each layer. The side-panel projection checkbox uses the same saved preference as both menus, and month view uses the same filtered entries as timed views.
+- Validation: all 108 tests pass, including all 32 combinations of the five display toggles, independent Google visibility, exact-match grouping, ambiguous events, and non-mutating display. Local browser checks verified visibility, save/reload persistence, disabled comparison state, and shared main/side projection controls.
+
+Reference: Sunsama's playlist documentation distinguishes generated projections from scheduled timeboxes; its February 6, 2026 changelog describes hiding matching calendar-originated plans in actual-only mode.

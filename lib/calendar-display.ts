@@ -13,9 +13,10 @@ export type CalendarDisplay = {
 export const defaultCalendarDisplay:CalendarDisplay={local:true,projections:true,actual:true,comparison:true,completions:true,hiddenGoogleCalendars:[]};
 export function calendarDisplay(s:State):CalendarDisplay{return {...defaultCalendarDisplay,...s.settings.calendarDisplay};}
 export type CalendarSource={id:string;label:string;detail?:string};
-export type CalendarItem=Block & {layer:'event'|'projection'|'planned'|'actual'|'actual-summary'|'completion';virtual?:boolean;completed?:boolean;detail?:string;sources?:CalendarSource[];googleEventId?:string};
+export type CalendarItem=Block & {layer:'event'|'scheduled'|'projection'|'planned'|'actual'|'actual-summary'|'completion';virtual?:boolean;completed?:boolean;detail?:string;sources?:CalendarSource[];googleEventId?:string};
 
-const slot=(b:CalendarItem)=>JSON.stringify([b.date,b.start,b.minutes,!!b.allDay]);
+const slot=(b:Block)=>JSON.stringify([b.date,b.start,b.minutes,!!b.allDay]);
+const matchingSlot=(b:Block)=>slot(b)+b.title.normalize('NFKC').trim().replace(/\s+/g,' ').toLowerCase();
 const source=(b:CalendarItem):CalendarSource=>({id:b.id,label:b.provider==='google'?'Google Calendar':b.layer==='actual'?'Actual time':'Planned time',detail:b.detail});
 function combined(rows:CalendarItem[]):CalendarItem{
   const base=rows.find(b=>b.layer==='actual')||rows.find(b=>b.taskId)||rows[0];
@@ -26,7 +27,7 @@ function combined(rows:CalendarItem[]):CalendarItem{
 export function combineCalendarItems(items:CalendarItem[]):CalendarItem[]{
   const taskGroups=new Map<string,CalendarItem[]>(),other:CalendarItem[]=[];
   for(const b of items){
-    if(!b.taskId||b.allDay||!['planned','projection','actual'].includes(b.layer)||(b.layer==='projection'&&b.virtual)){other.push(b);continue;}
+    if(!b.taskId||b.allDay||!['scheduled','planned','projection','actual'].includes(b.layer)||(b.layer==='projection'&&b.virtual)){other.push(b);continue;}
     const key=b.taskId+slot(b);taskGroups.set(key,[...(taskGroups.get(key)||[]),b]);
   }
   for(const group of taskGroups.values()){
@@ -34,7 +35,7 @@ export function combineCalendarItems(items:CalendarItem[]):CalendarItem[]{
     other.push(...(actual.length===1&&planned.length===1?[combined(group)]:group));
   }
   const exactGroups=new Map<string,CalendarItem[]>();
-  for(const b of other){const key=slot(b)+b.title.normalize('NFKC').trim().replace(/\s+/g,' ').toLowerCase();exactGroups.set(key,[...(exactGroups.get(key)||[]),b]);}
+  for(const b of other){const key=matchingSlot(b);exactGroups.set(key,[...(exactGroups.get(key)||[]),b]);}
   const result:CalendarItem[]=[];
   for(const group of exactGroups.values()){
     const events=group.filter(b=>b.provider==='google'&&!b.busyOnly),tasks=group.filter(b=>b.taskId&&!b.allDay&&!(b.layer==='projection'&&b.virtual));
@@ -66,14 +67,31 @@ export function calendarItems(s:State,day:string,{filter=()=>true,completed=true
     }
     for(const [id,minutes]of summary){const t=tasks.get(id)!;actual.push({id:`actual-summary:${id}:${day}`,taskId:id,title:t.title,date:day,start:0,minutes:1,allDay:true,color:s.channels.find(c=>c.id===t.channel)?.color||'#709b8d',layer:'actual-summary',virtual:true,completed:prefs.completions&&t.done,detail:`${duration(minutes)} actual · time not recorded`});}
   }
-  const actualTasks=new Set(actual.map(b=>b.taskId));
+  // A day total without timestamps cannot replace a scheduled interval.
+  const actualTasks=new Set(actual.filter(b=>b.layer==='actual').map(b=>b.taskId));
+  const dayBlocks=blocks.filter(b=>b.date===day);
+  const plannedTasks=new Map<string,Set<string>>(),googleCounts=new Map<string,number>(),visibleEventTasks=new Set<string>();
+  for(const b of dayBlocks){
+    if(b.allDay||b.busyOnly)continue;
+    const key=matchingSlot(b);
+    if(b.provider==='google')googleCounts.set(key,(googleCounts.get(key)||0)+1);
+    else if(b.taskId)plannedTasks.set(key,new Set([...(plannedTasks.get(key)||[]),b.taskId]));
+  }
   const items=blocks.filter(b=>b.date===day).flatMap<CalendarItem>(b=>{
-    if(b.provider==='google')return prefs.hiddenGoogleCalendars.includes(b.externalCalendarId||'')?[]:[{...b,layer:'event' as const}];
+    if(b.provider==='google'){
+      if(prefs.hiddenGoogleCalendars.includes(b.externalCalendarId||''))return [];
+      const key=matchingSlot(b),matches=plannedTasks.get(key);
+      // Only a unique matching timebox establishes a link; unrelated meetings stay visible.
+      const linkedTask=b.taskId||(googleCounts.get(key)===1&&matches?.size===1?[...matches][0]:undefined);
+      if(!prefs.comparison&&linkedTask&&actualTasks.has(linkedTask))return [];
+      const t=linkedTask?tasks.get(linkedTask):undefined;
+      if(allowed(t))visibleEventTasks.add(t!.id);
+      return [{...b,layer:'event' as const,completed:prefs.completions&&allowed(t)&&t!.done}];
+    }
     if(!b.taskId)return prefs.local?[{...b,layer:'event' as const}]:[];
-    const t=tasks.get(b.taskId);if(!allowed(t))return [];
+    const t=tasks.get(b.taskId);if(!prefs.local||!allowed(t))return [];
     if(actualTasks.has(t!.id))return prefs.comparison?[{...b,title:t!.title,layer:'planned' as const,completed:prefs.completions&&t!.done,detail:`${duration(b.minutes)} planned`}]:[];
-    if(t!.done)return prefs.completions?[{...b,title:t!.title,layer:'planned' as const,completed:true,detail:`${duration(b.minutes)} planned`}]:[];
-    return prefs.projections&&!t!.archived?[{...b,title:t!.title,layer:'projection' as const,detail:`${duration(b.minutes)} planned`}]:[];
+    return [{...b,title:t!.title,layer:'scheduled' as const,completed:prefs.completions&&t!.done,detail:`${duration(b.minutes)} scheduled`}];
   });
   if(prefs.projections&&day>=today.day){
     // Reuse the scheduler on a small copy; generated projections are never saved.
@@ -82,6 +100,6 @@ export function calendarItems(s:State,day:string,{filter=()=>true,completed=true
     for(const b of scheduleDay(scope,day,{project:true,from:day===today.day?today.minute:0}).blocks){if(saved.has(b.id)||!allowed(tasks.get(b.taskId||'')))continue;items.push({...b,id:`projection:${b.taskId}:${day}:${b.start}`,layer:'projection',virtual:true,detail:'Projected · not scheduled'});}
   }
   items.push(...actual);
-  if(prefs.completions&&completed){for(const t of s.tasks){if(!allowed(t)||!t.done||(t.completedOn||t.date)!==day||items.some(b=>b.taskId===t.id))continue;items.push({id:`completed:${t.id}:${day}`,taskId:t.id,title:t.title,date:day,start:0,minutes:1,allDay:true,color:s.channels.find(c=>c.id===t.channel)?.color||'#709b8d',layer:'completion',virtual:true,completed:true,detail:'Completed'});}}
+  if(prefs.completions&&completed){for(const t of s.tasks){if(!allowed(t)||!t.done||(t.completedOn||t.date)!==day||visibleEventTasks.has(t.id)||items.some(b=>b.taskId===t.id))continue;items.push({id:`completed:${t.id}:${day}`,taskId:t.id,title:t.title,date:day,start:0,minutes:1,allDay:true,color:s.channels.find(c=>c.id===t.channel)?.color||'#709b8d',layer:'completion',virtual:true,completed:true,detail:'Completed'});}}
   return combineCalendarItems(items);
 }
