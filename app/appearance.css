@@ -83,8 +83,45 @@
     var(--calendar-stripe,#ffffff33) 4px, var(--calendar-stripe,#ffffff33) 5px) !important;
 }
 :root [data-calendar-layer=projection][data-virtual=true]:not([data-calendar-sources]):is(.calendar-event,.calendar-grid-event,.month-event) {
-  background-color: color-mix(in srgb, var(--calendar-color) 18%, var(--paper));
-  color: var(--ink);
+  --projection-ink: color-mix(in srgb, var(--calendar-color) 78%, #173e37);
+  background-color: color-mix(in srgb, var(--calendar-color) 9%, var(--paper));
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--calendar-color) 85%, transparent) .7px, transparent .85px);
+  background-size: 7px 7px;
+  background-position: 3px 3px;
+  color: var(--projection-ink);
+  border: 1px solid var(--paper) !important;
+  border-radius: 5px;
+  box-shadow: none;
+  opacity: 1;
+}
+:root [data-calendar-layer=projection][data-virtual=true]:is(.calendar-event,.calendar-grid-event) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 3px 5px;
+}
+:root [data-calendar-layer=projection][data-virtual=true]:is(.calendar-event,.calendar-grid-event)>strong {
+  color: inherit;
+  font-weight: 550;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+:root [data-calendar-layer=projection][data-virtual=true]:is(.calendar-event,.calendar-grid-event)>:is(span,small) {
+  display: none;
+}
+:root [data-calendar-layer=projection][data-virtual=true]:is(.calendar-event,.calendar-grid-event,.month-event):hover {
+  background-color: color-mix(in srgb, var(--calendar-color) 16%, var(--paper));
+}
+:root[data-theme=dark] [data-calendar-layer=projection][data-virtual=true]:is(.calendar-event,.calendar-grid-event,.month-event) {
+  --projection-ink: color-mix(in srgb, var(--calendar-color) 70%, #ffffff);
+  background-color: color-mix(in srgb, var(--calendar-color) 13%, var(--paper));
+}
+:root .calendar-layer-status .projection-key {
+  background: radial-gradient(circle, #709b8d .6px, transparent .8px) 1px 1px / 4px 4px #eef5f2;
+  border: 1px solid #d5e3dd;
 }
 :root [data-calendar-sources]:is(.calendar-event,.calendar-grid-event,.month-event) { border-style: solid !important; }
 :root .calendar-event strong { font-size: 12px; font-weight: 600; }

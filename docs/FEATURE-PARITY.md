@@ -204,3 +204,5 @@ Local validation: regression tests cover idempotent repairs, manual edits, chang
 - Recorded actual time stays visible independently of the board's completed-task visibility. Legacy actual totals without sessions use the same fallback ledger as reports.
 - Duration-only records are grouped under a labeled Actual summary at the top of each day, with readable task names and durations on expansion. Their clock intervals are never invented.
 - Validation: 129 unit tests pass. Local browser checks covered a full working-day cutoff, extended preview, hidden completed tasks, untimed details, and toggling both layers off and on in main/side views. Hosted checks verified extended preview and duration-only actuals with existing planner data.
+
+- Projection appearance follows the supplied reference: pale channel-colored fill, regular dotted pattern, rounded white outline, and a top-aligned single-line colored title. Times and projection details remain available in the tooltip and accessible name. Main and side calendars share the treatment; scheduling and recorded actual-time styling are unchanged.
