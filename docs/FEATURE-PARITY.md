@@ -165,3 +165,8 @@ Validation: 83 unit tests and TypeScript checks passed. Local browser verificati
 
 - Timed calendar views and the right calendar panel share 50–200% zoom in 25% steps, with a 100% reset. The preference is saved per user in this browser alongside layout settings.
 - Time-slot positions, event heights, overlap lanes, current-time and shutdown lines, and pointer scheduling/resizing use the same hour scale. Zoom preserves the visible time; horizontal date scrolling stays independent. Month view keeps its existing layout.
+
+## Swap calendar and board from the sidebar date
+
+- Clicking the date in either right-side calendar or task board switches between the main board with a side calendar and the main calendar with a side task board. The selected date, channel filter, and zoom stay unchanged.
+- The last calendar layout is restored on return and saved with the existing per-user browser view preferences. Main board date headings continue to select their day.
