@@ -1,6 +1,6 @@
 # Daylight feature parity checklist
 
-Updated November 7, 2026. Reference: Sunsama's official help articles researched November 1 and November 7, 2026, plus a read-only native board comparison. This is an independent implementation, not an official Sunsama client. **This release is not 100% Sunsama parity.** The full baseline, source URLs and acceptance criteria are in [sunsama-audit-research.md](sunsama-audit-research.md).
+Updated November 8, 2026. Reference: Sunsama's official help articles researched November 1 and November 7, 2026, plus a read-only native board comparison. This is an independent implementation, not an official Sunsama client. **This release is not 100% Sunsama parity.** The full baseline, source URLs and acceptance criteria are in [sunsama-audit-research.md](sunsama-audit-research.md).
 
 Statuses describe behavior, not a percentage: **Verified** means the stated Daylight acceptance case passed; **Partial** means working behavior exists with material gaps; **Missing** means not implemented; **Blocked** identifies an external prerequisite. Unit-tested behavior does not establish pixel fidelity, hosted authentication or external-provider integration.
 
@@ -210,3 +210,11 @@ Local validation: regression tests cover idempotent repairs, manual edits, chang
 - Planner chrome cleanup removes the preserved-draft banner, bottom status bar, empty-day message, per-day reflection links, calendar connection strip, and calendar drag hint. Settings now opens keyboard-shortcut help and retains preserved-draft downloads in the data section. Calendar syncing and the existing shortcut commands continue working.
 
 - Auto-schedule and Reflow day are available from Calendars alongside the Task projections toggle. The right calendar no longer repeats these controls or shows My planner and the add-event plus; the clickable date and timeline event creation remain available. Local browser checks exercised both relocated actions and Undo.
+
+## Task quick actions and toolbar menus (November 8, 2026)
+
+- The left sidebar has one collapse control while expanded and one expand control while collapsed.
+- Today opens next/previous-day actions and a navigable month picker. Filter sits beside Today and includes searchable grouped channels and Manage channels. Both controls are available in the selected-day task panel.
+- Cards reveal quick actions on hover and keyboard focus, with compact popups for time, channel, repeat, source/task links, notes/comments, priority, and dates. More actions retains duplicate, trash, timer, and full task details. Saved quick edits preserve flexible timeboxes and recorded history.
+- Main planning surfaces use the supplied Sunsama reference background, #f8f8f9, with white task cards and popups.
+- Validation: 132 tests and type checking pass. Local browser checks covered date/month navigation, sidebar states, searchable channel filtering, time/channel/priority/notes/comment saves and reload, repeat options, Escape, channel management, and right-panel popup bounds. Full visual and feature parity remains partial.

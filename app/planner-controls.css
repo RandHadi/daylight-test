@@ -1,0 +1,44 @@
+.floating-panel{position:fixed;z-index:90;width:300px;max-width:calc(100vw - 16px);max-height:calc(100dvh - 16px);overflow:auto;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:6px;box-shadow:0 9px 24px #0003;padding:12px;outline:none;font-size:14px}
+.planner-menu-trigger{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:5px;background:var(--paper);padding:7px 10px;font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap}
+.planner-menu-trigger:hover,.planner-menu-trigger[aria-expanded=true]{background:var(--subtle);color:var(--ink)}
+.planner-menu-trigger.has-filter{color:var(--ink)}.filter-active-dot{width:5px;height:5px;background:var(--green);border-radius:50%}
+.date-navigation-actions{border-bottom:1px solid var(--soft-line);margin:0 -12px 8px;padding:0 10px 10px}
+.date-navigation-actions button{width:100%;display:flex;align-items:center;text-align:left;gap:12px;padding:10px 8px;font-size:15px;border-radius:4px}
+.date-navigation-actions kbd{margin-left:auto;display:flex;align-items:center;gap:7px;font:inherit;font-size:12px;color:var(--muted);border:0;background:none;white-space:nowrap}
+.date-navigation-actions button:hover,.filter-option:hover,.quick-menu-row:hover{background:var(--subtle)}
+.today-menu .detail-calendar-grid button.in-range{background:#e5f4fc;border-radius:0}
+.today-menu .detail-calendar-grid button.selected,.today-menu .detail-calendar-grid button.today{background:#2ba5fa;color:#fff;border-radius:50%}
+.today-menu .detail-calendar-grid button{height:34px;font-size:14px}.today-menu .detail-calendar-title{padding:5px 0 10px}
+.today-menu .detail-calendar-title strong{font-size:17px}
+.channel-filter-menu{padding:12px 0 5px;width:300px}.channel-filter-menu h4{font-size:13px;font-weight:400;color:var(--muted);margin:2px 16px 10px}
+.channel-filter-menu>input{display:block;width:calc(100% - 32px);margin:0 16px 6px;border:0;border-bottom:1px solid var(--soft-line);border-radius:0;padding:8px 2px;background:var(--paper)}
+.channel-filter-menu .filter-option{display:flex;width:100%;align-items:center;gap:12px;padding:8px 16px;text-align:left;font-size:15px}
+.filter-option>span{flex:1}.filter-option>svg{flex-shrink:0}.filter-option.chosen{background:var(--subtle)}.channel-filter-menu .filter-child{padding-left:36px}
+.channel-filter-menu .manage-channels{width:100%;text-align:left;color:#249df0;padding:14px 16px 10px;font-size:14px}.channel-filter-menu .helper-text{padding:8px 16px}
+.task-card .task-quick-footer{display:flex;align-items:center;gap:5px;padding:5px 10px 10px 35px;min-height:35px}
+.task-card .task-quick-icons{display:flex;gap:1px;align-items:center;flex-shrink:0}
+.task-card .task-quick-icons button{display:flex;align-items:center;justify-content:center;height:24px;width:23px;color:var(--muted);border-radius:4px;opacity:0}
+.task-card .task-quick-icons button.has-content{opacity:.7}
+.task-card:hover .task-quick-icons button,.task-card:focus-within .task-quick-icons button,.task-card .task-quick-icons button[aria-expanded=true]{opacity:1}
+.task-card .task-quick-icons button:hover,.task-card .task-channel-button:hover,.task-card .task-time-badge:hover{background:var(--subtle);color:var(--ink)}
+.task-card .task-channel-button{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);margin-left:auto;min-width:0;border-radius:3px;padding:3px 0 3px 3px}
+.task-channel-button>svg{flex-shrink:0}.task-channel-button>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.task-card .task-time-badge{position:absolute;top:12px;right:12px;border-radius:4px;background:var(--subtle);color:var(--muted);font-weight:600;font-size:11px;padding:3px 5px;line-height:1.3}
+.task-card.has-timebox .task-title{padding-right:0}.task-card .task-title{padding-right:44px}.task-card.has-actual:not(.has-timebox) .task-title{padding-right:86px}
+.task-card>.task-top>.check{bottom:15px}
+.task-quick-popup header{display:flex;align-items:center;gap:10px;justify-content:space-between;margin:0 0 10px}
+.task-quick-popup h3{font-size:14px;font-weight:500;color:var(--muted);margin:0}.task-quick-popup header .icon{width:23px;height:23px}
+.task-quick-popup .field{font-size:12px;display:block;margin:12px 0;color:var(--muted)}
+.task-quick-popup input,.task-quick-popup select,.task-quick-popup textarea{display:block;margin-top:6px;width:100%;font-size:14px;resize:vertical}
+.task-quick-popup .checkbox-label input{width:14px;margin:0}.task-quick-popup .primary{margin-top:4px;font-size:12px;padding:8px 14px}
+.quick-menu-row{display:flex;gap:10px;align-items:center;width:100%;padding:9px 7px;text-align:left;border-radius:4px;font-size:14px;color:var(--ink)}
+.quick-menu-row>span{flex:1}.quick-menu-row>svg{flex-shrink:0;color:var(--muted)}
+.quick-menu-divider{border-top:1px solid var(--soft-line);margin:6px -12px}
+.quick-presets{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}.quick-presets button{border:1px solid var(--line);border-radius:3px;padding:5px 2px;font-size:11px}.quick-presets button:hover{background:var(--subtle)}
+.quick-comments{max-height:150px;overflow:auto;font-size:12px;border-block:1px solid var(--soft-line);padding:4px 0}.quick-comments>div{padding:8px 0}.quick-comments p{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:4px}
+.quick-error{color:#b24d3b;font-size:12px;padding-top:10px}.quick-panel-repeat .editor-grid{gap:8px}.quick-panel-repeat .feature-fieldset{margin:10px 0;padding:10px}.quick-panel-repeat .weekday-picker{gap:2px}.quick-panel-repeat .weekday-picker button{font-size:10px;padding:4px}
+.task-side-panel .calendar-heading{gap:6px}.task-side-panel .calendar-heading .planner-menu-trigger{font-size:12px;padding:7px 8px}.task-side-panel .calendar-heading>.icon{width:24px}
+:root[data-theme=dark] .today-menu .detail-calendar-grid button.in-range{background:#27475c}
+@media(hover:none){.task-card .task-quick-icons button{opacity:1}}
+@media(max-width:1100px){.view-toolbar .date-nav>strong{display:none}.compact-save{max-width:95px;text-align:right;font-size:9px}}
+@media(max-width:760px){.planner-menu-trigger{padding:6px;font-size:11px}.view-toolbar .date-nav{gap:5px}.view-toolbar .view-controls{margin-left:auto}.task-card .task-title{font-size:15px}}

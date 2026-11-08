@@ -1,18 +1,24 @@
 'use client';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Check, ChevronDown, Download, Filter, Folder, Plus, X } from 'lucide-react';
+import { Check, ChevronDown, Download, Filter, Folder, Plus, X, Hash } from 'lucide-react';
 import { fromKey, duration, uid, type State } from '@/lib/planner-model';
 import { buckets } from '@/lib/planner-advanced';
 import { analyticsRows, analyticsCsv, layouts, viewDays, type CalendarLayout } from '@/lib/workspace-views';
 import './workspace-views.css';
+import { FloatingPanel } from './floating-panel';
 export function Popup({label,icon,children,active=false}:{label:string;icon?:ReactNode;children:ReactNode;active?:boolean}) {
  const ref=useRef<HTMLDetailsElement>(null);
  useEffect(()=>{const close=(e:MouseEvent)=>{if(!ref.current?.contains(e.target as Node))ref.current?.removeAttribute('open');};const key=(e:KeyboardEvent)=>{if(e.key==='Escape')ref.current?.removeAttribute('open');};document.addEventListener('click',close);document.addEventListener('keydown',key);return()=>{document.removeEventListener('click',close);document.removeEventListener('keydown',key);};},[]);
  return <details className={`workspace-popup ${active?'has-filter':''}`} ref={ref}><summary>{icon}{label}<ChevronDown size={12}/></summary><div className="workspace-popover">{children}</div></details>;
 }
-export function ChannelFilter({data,value,onChange}:{data:State;value:string;onChange:(v:string)=>void}) {
- const [search,setSearch]=useState('');const label=value==='all'?'All channels':data.channels.find(c=>c.id===value)?.name||value;
- return <Popup label={label} icon={<Filter size={14}/>} active={value!=='all'}><h4>Filter tasks by channel</h4><input aria-label="Search channels" placeholder="Search channels…" value={search} onChange={e=>setSearch(e.target.value)}/><button onClick={()=>onChange('all')}>All channels{value==='all'&&<Check size={14}/>}</button>{[...new Set(data.channels.map(c=>c.context))].map(context=><div key={context}><button className="filter-context" onClick={()=>onChange(context)}>{context}{value===context&&<Check size={14}/>}</button>{data.channels.filter(c=>c.context===context&&!c.disabled&&c.name.toLowerCase().includes(search.toLowerCase())).map(c=><button key={c.id} onClick={()=>onChange(c.id)}><i style={{background:c.color}}/>{c.name}{value===c.id&&<Check size={14}/>}</button>)}</div>)}</Popup>;
+export function ChannelFilter({data,value,onChange,onManage}:{data:State;value:string;onChange:(v:string)=>void;onManage:()=>void}) {
+ const [search,setSearch]=useState(''),[anchor,setAnchor]=useState<HTMLButtonElement|null>(null);
+ const choose=(value:string)=>{onChange(value);setAnchor(null);};
+ const channels=data.channels.filter(c=>!c.disabled),q=search.trim().toLowerCase();
+ return <><button className={`planner-menu-trigger ${value!=='all'?'has-filter':''}`} aria-label="Filter tasks by channel" aria-haspopup="dialog" aria-expanded={!!anchor} title={value==='all'?'All channels':data.channels.find(c=>c.id===value)?.name||value} onClick={e=>{setSearch('');setAnchor(anchor?null:e.currentTarget);}}><Filter size={15}/>Filter{value!=='all'&&<span className="filter-active-dot"/>}</button>{anchor&&<FloatingPanel anchor={anchor} label="Filter tasks by channel" onClose={()=>setAnchor(null)} className="channel-filter-menu"><h4>Filter tasks by channel:</h4><input aria-label="Search channels" placeholder="Search…" value={search} onChange={e=>setSearch(e.target.value)}/><button className={`filter-option ${value==='all'?'chosen':''}`} onClick={()=>choose('all')}><Hash size={20} color="#43c580"/><span>all</span>{value==='all'&&<Check size={17}/>}</button>{[...new Set(channels.map(c=>c.context))].map(context=>{
+ const matches=channels.filter(c=>c.context===context&&(c.name.toLowerCase().includes(q)||context.toLowerCase().includes(q)));
+ return matches.length?<div key={context}><button className={`filter-option ${value===context?'chosen':''}`} onClick={()=>choose(context)}><Hash size={20} color={matches[0].color}/><span>{context}</span>{value===context&&<Check size={17}/>}</button>{matches.map(c=><button className={`filter-option filter-child ${value===c.id?'chosen':''}`} key={c.id} onClick={()=>choose(c.id)}><Hash size={20} color={c.color}/><span>{c.name}</span>{value===c.id&&<Check size={17}/>}</button>)}</div>:null;
+ })}{!channels.some(c=>c.name.toLowerCase().includes(q)||c.context.toLowerCase().includes(q))&&<p className="helper-text">No matching channels.</p>}<button className="manage-channels" onClick={()=>{setAnchor(null);onManage();}}>Manage channels</button></FloatingPanel>}</>;
 }
 export function ViewOptions({value,onChange,completed,onCompleted}:{value:CalendarLayout;onChange:(v:CalendarLayout)=>void;completed:boolean;onCompleted:(v:boolean)=>void}) {
  return <Popup label={layouts.find(l=>l[0]===value)![1]}><h4>Views</h4>{layouts.map(([v,label])=><button key={v} onClick={e=>{onChange(v);e.currentTarget.closest('details')?.removeAttribute('open');}}>{label}{value===v&&<Check size={14}/>}</button>)}<label className="checkbox-label"><input type="checkbox" checked={completed} onChange={e=>onCompleted(e.target.checked)}/>Show completed tasks</label></Popup>;

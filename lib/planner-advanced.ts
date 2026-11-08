@@ -253,14 +253,14 @@ export function capture(text: string, s: State, day: string): Task {
 export function importMeeting(s: State, b: Block): Task { const existing = linkedCalendarTask(s,b); if (existing)
     return existing; const t = task(b.title, b.date, s.settings.defaultChannel || s.channels[0].id, Math.min(720, b.minutes)); t.sourceUrl = `daylight:event:${b.id}`; s.tasks.push(t); if(b.provider==='google'&&b.externalEventId)linkCalendarTask(s,t.id,b.id); return t; }
 
-export function saveTask(s:State,draft:Task,start:number|null,today:string,applyFuture:boolean|'all'=false):void {
+export function saveTask(s:State,draft:Task,start:number|null,today:string,applyFuture:boolean|'all'=false,preserveSchedule=false):void {
  const total=draft.subtasks.reduce((n,st)=>n+(st.minutes||0),0)+(draft.unallocatedMinutes||0);if(total>0)draft.minutes=total;
  const current=s.tasks.find(t=>t.id===draft.id),previous=s.blocks.find(b=>b.taskId===draft.id),oldMinutes=current?.minutes;
  if(current){let desiredActual=draft.actual;const oldActual=current.actual;if(s.timer?.taskId===current.id&&s.timer.subtaskId&&!draft.subtasks.some(st=>st.id===s.timer!.subtaskId&&!st.done)){finishTimer(s);if(desiredActual===oldActual){desiredActual=current.actual;draft.actual=current.actual;}}if(desiredActual!==current.actual)setActual(s,current.id,desiredActual,draft.date||today);const changedDate=current.date!==draft.date;Object.assign(current,structuredClone(draft));for(const st of current.subtasks){const entries=(s.sessions||[]).filter(e=>e.taskId===current.id&&e.subtaskId===st.id);if(entries.length||st.actual!==undefined)st.actual=entries.reduce((n,e)=>n+e.seconds/60,0);}current.edited=true;if(changedDate)s.blocks=s.blocks.filter(b=>b.taskId!==current.id);}
  else s.tasks.push(structuredClone(draft));
  const saved=s.tasks.find(t=>t.id===draft.id)!;const remaining=s.blocks.filter(b=>b.taskId===saved.id);
  for(const b of remaining){b.title=saved.title;b.color=s.channels.find(c=>c.id===saved.channel)?.color||b.color;if(remaining.length===1&&saved.minutes>0&&oldMinutes!==saved.minutes)b.minutes=Math.min(saved.minutes,1440-b.start);}
- if(start!==null&&saved.date){const first=remaining.find(b=>b.id===previous?.id);if(first){first.start=Math.min(start,1440-first.minutes);first.date=saved.date;first.pinned=true;}else if(saved.minutes>0)addTimebox(s,saved.id,saved.date,start,saved.minutes,true);}
+ if(start!==null&&saved.date){const first=remaining.find(b=>b.id===previous?.id);if(first){first.start=Math.min(start,1440-first.minutes);first.date=saved.date;if(!preserveSchedule)first.pinned=true;}else if(saved.minutes>0)addTimebox(s,saved.id,saved.date,start,saved.minutes,true);}
  else if(previous)s.blocks=s.blocks.filter(b=>b.id!==previous.id);
- if(saved.date)delete saved.folder;if(start!==null&&saved.recurrence!=='none'){saved.preferred??=start;saved.rigid??=true;}syncSeries(s,saved,applyFuture);generateOccurrences(s,today);
+ if(saved.date)delete saved.folder;if(start!==null&&!preserveSchedule&&saved.recurrence!=='none'){saved.preferred??=start;saved.rigid??=true;}syncSeries(s,saved,applyFuture);generateOccurrences(s,today);
 }

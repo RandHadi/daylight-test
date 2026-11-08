@@ -1,6 +1,6 @@
 /* Reference palette: charcoal content, neutral chrome, white cards, solid calendar colors. */
 :root:not([data-theme=dark]) {
-  --bg: #f7f7f9;
+  --bg: #f8f8f9;
   --paper: #ffffff;
   --sidebar: #ebebee;
   --ink: #41413c;
