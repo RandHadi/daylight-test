@@ -125,3 +125,11 @@ Validation: 80 unit tests and TypeScript checks passed. Browser checks covered a
 Day, three-day, weekday, and week calendars now scroll horizontally through a replenishing date window and vertically through the hours. Date headers and hour labels remain fixed on their respective axes. Horizontal movement preserves the vertical hour position. Month view scrolls between full months with horizontal snapping. Arrow keys scroll the focused calendar surface. Date windows cross year/month boundaries and weekday mode skips weekends in both directions.
 
 Validation: 83 unit tests and TypeScript checks passed. Local browser verification covered horizontal movement in both directions, edge replenishment, vertical-hour preservation, sticky date headers, month/year crossing, weekday windows, and a 390px layout without page overflow.
+# Calendar selection and task layers (v14)
+
+- Added the Calendars popover to the right calendar panel and main calendar toolbar, using the supplied reference layout and Daylight branding.
+- The shared, saved display preferences control local events, task projections, actual time, planned-versus-actual comparison, completion marks, and individual Google calendars grouped under the connected account.
+- Existing synced calendars can be hidden without deleting events or freeing their busy time. Selecting an unsynced calendar uses the existing authorized Google connection and its eight-calendar limit. Manage calendars opens the existing Google settings.
+- Actual time uses recorded timer/import timestamps, split in the planner timezone. Manual or legacy entries without timestamps appear as day totals; no clock times are invented. Completed tasks without timed records appear in the day header. Projections are display-only and never create saved timeboxes.
+- Validated source filters, independent layers, timezone boundaries, archive/deletion/channel filters, non-mutating projections, and saved settings. Browser checks cover both calendar menus, reload persistence, Escape/outside dismissal, Manage calendars, and a 390px viewport.
+

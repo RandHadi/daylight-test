@@ -1,4 +1,5 @@
 import { zonedParts, wallToEpoch } from './calendar-time.ts';
+import type {CalendarDisplay} from './calendar-display.ts';
 export type RecurrenceRule = {
     frequency: 'daily' | 'weekly' | 'monthly';
     interval: number;
@@ -107,6 +108,7 @@ export type State = {
     channels: Channel[];
     objectives: Objective[];
     settings: {
+        calendarDisplay?: CalendarDisplay;
         start: number;
         end: number;
         capacity: number;
