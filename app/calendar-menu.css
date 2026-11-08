@@ -1,7 +1,7 @@
 .calendar-menu{position:relative;flex-shrink:0;color:var(--ink)}
 .calendars-trigger{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:5px;background:var(--paper);font-size:12px;padding:7px 10px;white-space:nowrap}
 .calendars-trigger[aria-expanded=true]{background:var(--sidebar);border-color:#c8c9cd}
-.calendars-popover{position:absolute;right:0;top:calc(100% + 8px);width:310px;max-width:calc(100vw - 24px);max-height:min(680px,calc(100dvh - 145px));overflow:auto;padding:15px 18px 0;background:var(--paper);border:1px solid var(--line);border-radius:6px;box-shadow:0 10px 28px #0003;z-index:60;text-align:left}
+.calendars-popover{position:fixed;overflow:auto;padding:15px 18px 0;background:var(--paper);border:1px solid var(--line);border-radius:6px;box-shadow:0 10px 28px #0003;z-index:60;text-align:left}
 .calendar-menu-title{font-size:13px;color:var(--muted);margin:0 0 19px}
 .calendars-popover h3{font:600 11px var(--font);text-transform:uppercase;margin:0 0 8px;overflow-wrap:anywhere}
 .calendars-popover>button{display:flex;align-items:center;gap:12px;width:100%;min-height:39px;text-align:left;font-size:15px;border-radius:4px;padding:6px 3px;font-weight:400}
@@ -14,7 +14,7 @@
 .calendar-menu-note,.calendar-menu-error{font-size:11px;line-height:1.6;margin:13px 0;color:var(--muted)}.calendar-menu-error{color:#b64c40}
 .calendar-menu-footer{border-top:1px solid var(--line);margin-top:20px;padding:12px 0;position:sticky;bottom:0;background:var(--paper)}
 .calendar-menu-footer>button{color:#2999e4;font-size:13px;padding:3px 0;text-align:left}
-.calendar-heading .calendar-menu{margin-right:auto}.calendar-heading .calendars-popover{right:auto;left:0}
+.calendar-heading .calendar-menu{margin-right:auto}
 .calendar-panel{overflow:visible}.calendar-scroll{min-height:0}
 .calendar-layer-actual{background-image:repeating-linear-gradient(130deg,transparent 0,transparent 4px,#446e6b45 4px,#446e6b45 5px)!important}
 .calendar-layer-planned{border-style:dashed!important;opacity:.8}
@@ -25,4 +25,4 @@
 .calendar-day-extras{max-height:80px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
 .calendar-day-extras small{text-transform:none;font-size:9px}
 .calendar-panel .all-day-events{max-height:145px;overflow:auto;flex-shrink:0;scrollbar-width:thin}
-@media(max-width:760px){.calendars-trigger{font-size:10px;padding:6px;gap:4px}.calendars-popover,.calendar-heading .calendars-popover{position:fixed;left:auto;right:48px;top:112px;width:min(310px,calc(100vw - 60px));max-height:calc(100dvh - 150px)}.calendars-popover>button{min-height:42px}.view-controls{flex-wrap:wrap}.compact-save{display:none}}
+@media(max-width:760px){.calendars-trigger{font-size:10px;padding:6px;gap:4px}.calendars-popover>button{min-height:42px}.view-controls{flex-wrap:wrap}.compact-save{display:none}}
