@@ -22,4 +22,7 @@
 .calendar-completion-mark{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:#4bc786;color:white;width:14px;height:14px;flex-shrink:0;margin-right:4px;font-size:10px;line-height:14px;vertical-align:middle}
 .calendar-event .calendar-layer-label,.calendar-grid-event .calendar-layer-label{display:block;font-size:8px;margin-top:3px;opacity:.8}
 .calendar-actual-summary{font-size:10px;background:var(--sidebar);border-radius:3px;padding:4px 5px;margin-top:4px}
+.calendar-day-extras{max-height:80px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.calendar-day-extras small{text-transform:none;font-size:9px}
+.calendar-panel .all-day-events{max-height:145px;overflow:auto;flex-shrink:0;scrollbar-width:thin}
 @media(max-width:760px){.calendars-trigger{font-size:10px;padding:6px;gap:4px}.calendars-popover,.calendar-heading .calendars-popover{position:fixed;left:auto;right:48px;top:112px;width:min(310px,calc(100vw - 60px));max-height:calc(100dvh - 150px)}.calendars-popover>button{min-height:42px}.view-controls{flex-wrap:wrap}.compact-save{display:none}}
