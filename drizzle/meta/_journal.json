@@ -15,6 +15,13 @@
       "when": 1794078921783,
       "tag": "0001_magical_prowler",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794098245934,
+      "tag": "0002_colorful_power_man",
+      "breakpoints": true
     }
   ]
 }

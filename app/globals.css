@@ -57,3 +57,5 @@
 .board.board-scroll>.day-column>*{flex-shrink:0}
 @media(max-width:1100px){.board.board-scroll{grid-auto-columns:max(210px,calc(100% / 3))}}
 @media(max-width:760px){.board.board-scroll{grid-auto-columns:90%;flex-direction:row}}
+
+.sunsama-import{border-top:1px solid var(--line);margin-top:24px;padding-top:4px}.sunsama-import>.secondary{margin-top:12px}.import-summary{margin-top:16px;border:1px solid var(--line);padding:14px;border-radius:8px;line-height:1.6}.import-summary p{margin:8px 0}.import-backup{margin:12px 0}.import-backup .data-actions{gap:12px;font-size:11px}.import-backup a{text-decoration:underline}

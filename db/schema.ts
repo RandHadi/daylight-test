@@ -6,6 +6,16 @@ export const planners = sqliteTable('planners', {
   updatedAt: integer('updated_at').notNull(),
 });
 
+export const plannerImports = sqliteTable('planner_imports', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  source: text('source').notNull(),
+  before: text('before_payload').notNull(),
+  draft: text('draft_payload').notNull(),
+  report: text('report').notNull(),
+  createdAt: integer('created_at').notNull(),
+});
+
 // Provider credentials never live in the planner JSON or browser storage.
 export const googleConnections = sqliteTable('google_connections', {
   userId: text('user_id').primaryKey(),
