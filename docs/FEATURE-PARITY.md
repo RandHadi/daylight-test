@@ -133,3 +133,10 @@ Validation: 83 unit tests and TypeScript checks passed. Local browser verificati
 - Actual time uses recorded timer/import timestamps, split in the planner timezone. Manual or legacy entries without timestamps appear as day totals; no clock times are invented. Completed tasks without timed records appear in the day header. Projections are display-only and never create saved timeboxes.
 - Validated source filters, independent layers, timezone boundaries, archive/deletion/channel filters, non-mutating projections, and saved settings. Browser checks cover both calendar menus, reload persistence, Escape/outside dismissal, Manage calendars, and a 390px viewport.
 
+# Matching calendar entries (v16)
+
+- Exact planned/actual intervals for one task now share one calendar card. A single Google event with the same title, date, and interval joins that card, labeled Google / Planned / Actual.
+- Different times remain separate for comparison. Multiple matching Google calendars, distinct tasks, and overlapping time entries remain separate when the match is ambiguous.
+- Grouping changes display only. The source task, Google event, saved timeboxes, and time ledger remain intact; a grouped-card dialog opens each source's details.
+- Regression coverage includes the reported three-card case, all calendar visibility combinations, mismatched intervals, multiple calendars/tasks, and overlapping actual entries. All 96 tests pass.
+

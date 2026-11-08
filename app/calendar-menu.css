@@ -25,4 +25,8 @@
 .calendar-day-extras{max-height:80px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
 .calendar-day-extras small{text-transform:none;font-size:9px}
 .calendar-panel .all-day-events{max-height:145px;overflow:auto;flex-shrink:0;scrollbar-width:thin}
+.calendar-entry-sources{display:grid;gap:10px;margin:20px 0}
+.calendar-entry-sources>div{padding:12px 14px;background:var(--sidebar);border:1px solid var(--line);border-radius:5px}
+.calendar-entry-sources strong,.calendar-entry-sources small{display:block}.calendar-entry-sources small{margin-top:5px;color:var(--muted)}
+.calendar-event[data-calendar-sources] .calendar-layer-label,.calendar-grid-event[data-calendar-sources] .calendar-layer-label{font-weight:600;opacity:1}
 @media(max-width:760px){.calendars-trigger{font-size:10px;padding:6px;gap:4px}.calendars-popover>button{min-height:42px}.view-controls{flex-wrap:wrap}.compact-save{display:none}}

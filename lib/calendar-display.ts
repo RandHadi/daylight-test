@@ -12,7 +12,38 @@ export type CalendarDisplay = {
 };
 export const defaultCalendarDisplay:CalendarDisplay={local:true,projections:true,actual:true,comparison:true,completions:true,hiddenGoogleCalendars:[]};
 export function calendarDisplay(s:State):CalendarDisplay{return {...defaultCalendarDisplay,...s.settings.calendarDisplay};}
-export type CalendarItem=Block & {layer:'event'|'projection'|'planned'|'actual'|'actual-summary'|'completion';virtual?:boolean;completed?:boolean;detail?:string};
+export type CalendarSource={id:string;label:string;detail?:string};
+export type CalendarItem=Block & {layer:'event'|'projection'|'planned'|'actual'|'actual-summary'|'completion';virtual?:boolean;completed?:boolean;detail?:string;sources?:CalendarSource[];googleEventId?:string};
+
+const slot=(b:CalendarItem)=>JSON.stringify([b.date,b.start,b.minutes,!!b.allDay]);
+const source=(b:CalendarItem):CalendarSource=>({id:b.id,label:b.provider==='google'?'Google Calendar':b.layer==='actual'?'Actual time':'Planned time',detail:b.detail});
+function combined(rows:CalendarItem[]):CalendarItem{
+  const base=rows.find(b=>b.layer==='actual')||rows.find(b=>b.taskId)||rows[0];
+  const sources=rows.flatMap(b=>b.sources||[source(b)]).sort((a,b)=>['Google Calendar','Planned time','Actual time'].indexOf(a.label)-['Google Calendar','Planned time','Actual time'].indexOf(b.label));
+  return {...base,virtual:true,sources,googleEventId:rows.find(b=>b.provider==='google')?.id||base.googleEventId,detail:sources.map(s=>s.label.replace(' Calendar','').replace(' time','')).join(' · ')};
+}
+/** Collapse exact display matches only; source records and time ledgers stay independent. */
+export function combineCalendarItems(items:CalendarItem[]):CalendarItem[]{
+  const taskGroups=new Map<string,CalendarItem[]>(),other:CalendarItem[]=[];
+  for(const b of items){
+    if(!b.taskId||b.allDay||!['planned','projection','actual'].includes(b.layer)||(b.layer==='projection'&&b.virtual)){other.push(b);continue;}
+    const key=b.taskId+slot(b);taskGroups.set(key,[...(taskGroups.get(key)||[]),b]);
+  }
+  for(const group of taskGroups.values()){
+    const actual=group.filter(b=>b.layer==='actual'),planned=group.filter(b=>b.layer!=='actual');
+    other.push(...(actual.length===1&&planned.length===1?[combined(group)]:group));
+  }
+  const exactGroups=new Map<string,CalendarItem[]>();
+  for(const b of other){const key=slot(b)+b.title.normalize('NFKC').trim().replace(/\s+/g,' ').toLowerCase();exactGroups.set(key,[...(exactGroups.get(key)||[]),b]);}
+  const result:CalendarItem[]=[];
+  for(const group of exactGroups.values()){
+    const events=group.filter(b=>b.provider==='google'),tasks=group.filter(b=>b.taskId&&!b.allDay&&!(b.layer==='projection'&&b.virtual));
+    // Two calendars or two tasks with the same title/time are ambiguous: keep them separate.
+    if(events.length===1&&tasks.length===1){const pair=new Set([events[0],tasks[0]]);result.push(combined([...pair]),...group.filter(b=>!pair.has(b)));}
+    else result.push(...group);
+  }
+  return result.sort((a,b)=>a.start-b.start);
+}
 
 /** Display-only layers. Hiding a calendar never changes saved blocks or busy time. */
 export function calendarItems(s:State,day:string,{filter=()=>true,completed=true,now=Date.now(),blocks=s.blocks}:{filter?:(t:Task)=>boolean;completed?:boolean;now?:number;blocks?:Block[]}={}):CalendarItem[]{
@@ -52,5 +83,5 @@ export function calendarItems(s:State,day:string,{filter=()=>true,completed=true
   }
   items.push(...actual);
   if(prefs.completions&&completed){for(const t of s.tasks){if(!allowed(t)||!t.done||(t.completedOn||t.date)!==day||items.some(b=>b.taskId===t.id))continue;items.push({id:`completed:${t.id}:${day}`,taskId:t.id,title:t.title,date:day,start:0,minutes:1,allDay:true,color:s.channels.find(c=>c.id===t.channel)?.color||'#709b8d',layer:'completion',virtual:true,completed:true,detail:'Completed'});}}
-  return items.sort((a,b)=>a.start-b.start);
+  return combineCalendarItems(items);
 }
