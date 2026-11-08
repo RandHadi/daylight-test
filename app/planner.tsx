@@ -170,8 +170,7 @@ export default function Planner({ name, userId }: {
         }
     } saving.current = false; }, []);
     const change = (fn: (s: State) => void, canUndo = false) => { if (!dataRef.current || importing.current || blocked.current || refreshing.current)
-        return false; if (canUndo)
-        undo.current = structuredClone(dataRef.current); const s = structuredClone(dataRef.current); fn(s); reconcileEstimates(s); if (s.settings.autoSort) {
+        return false; const s = structuredClone(dataRef.current); fn(s); if(JSON.stringify(s)===JSON.stringify(dataRef.current))return true; if(canUndo)undo.current=structuredClone(dataRef.current); reconcileEstimates(s); if (s.settings.autoSort) {
         for (const d of new Set(s.tasks.map(t => t.date).filter(Boolean)))
             sortDay(s, d!);
     } if (s.settings.autoReschedule) {

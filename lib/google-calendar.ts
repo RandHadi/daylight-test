@@ -171,9 +171,16 @@ export async function fetchCalendarEvents(token: string, calendar: GoogleCalenda
 }
 export function applyCalendarSync(state: State, sync: CalendarSync) {
     const ids = new Set(sync.calendarIds);
-    const retained = state.blocks.filter(b => !(b.provider === 'google' && ids.has(b.externalCalendarId || '') && b.date >= sync.from && b.date < sync.to));
-    if (retained.length + sync.blocks.length > 4900)
+    const incoming = new Map(sync.blocks.map(b => [b.id, b]));
+    const next: Block[] = [];
+    // Refresh in place so unchanged events do not reorder the saved planner.
+    for (const block of state.blocks) {
+        if (!(block.provider === 'google' && ids.has(block.externalCalendarId || '') && block.date >= sync.from && block.date < sync.to)) next.push(block);
+        else { const fresh = incoming.get(block.id); if (fresh) { const same = (Object.keys({...block,...fresh}) as (keyof Block)[]).every(key => block[key] === fresh[key]); next.push(same ? block : fresh); } incoming.delete(block.id); }
+    }
+    next.push(...incoming.values());
+    if (next.length > 4900)
         throw new Error('There are too many calendar events to save. Choose fewer calendars.');
-    state.blocks = [...retained, ...sync.blocks];
+    state.blocks = next;
 }
 export function removeGoogleCalendars(state: State, keep: string[] = []) { const ids = new Set(keep); state.blocks = state.blocks.filter(b => b.provider !== 'google' || ids.has(b.externalCalendarId || '')); }

@@ -138,5 +138,5 @@ Validation: 83 unit tests and TypeScript checks passed. Local browser verificati
 - Exact planned/actual intervals for one task now share one calendar card. A single Google event with the same title, date, and interval joins that card, labeled Google / Planned / Actual.
 - Different times remain separate for comparison. Multiple matching Google calendars, distinct tasks, and overlapping time entries remain separate when the match is ambiguous.
 - Grouping changes display only. The source task, Google event, saved timeboxes, and time ledger remain intact; a grouped-card dialog opens each source's details.
-- Regression coverage includes the reported three-card case, all calendar visibility combinations, mismatched intervals, multiple calendars/tasks, and overlapping actual entries. All 96 tests pass.
+- Regression coverage includes the reported three-card case, all calendar visibility combinations, mismatched intervals, multiple calendars/tasks, and overlapping actual entries. All 97 tests pass. Unchanged Google refreshes preserve block order and skip redundant planner saves.
 
