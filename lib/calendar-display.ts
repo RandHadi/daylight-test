@@ -23,7 +23,7 @@ export function calendarProjection(s:State,day:string,{filter=()=>true,now=Date.
   if(!prefs.projections||day<today.day)return {blocks:[] as Block[],missed:[] as string[]};
   const scope:State={...s,tasks:s.tasks.filter(t=>t.date===day&&!t.archived&&!t.deleted&&filter(t)),blocks:blocks.filter(b=>b.date===day),sessions:[],series:[]};
   const saved=new Set(scope.blocks.map(b=>b.id));
-  const result=scheduleDay(scope,day,{project:true,from:day===today.day?today.minute:0,allowOutside:!!prefs.projectionsOutsideHours});
+  const result=scheduleDay(scope,day,{project:true,from:day===today.day?today.minute:0,extendEnd:!!prefs.projectionsOutsideHours});
   return {blocks:result.blocks.filter(b=>!saved.has(b.id)),missed:result.missed};
 }
 

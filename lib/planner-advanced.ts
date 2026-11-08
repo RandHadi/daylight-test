@@ -171,7 +171,7 @@ export function capacity(s: State, day: string): number { return s.settings.week
 export function sortDay(s: State, day: string): void { const rank = { urgent: 0, important: 1, normal: 2, low: 3 }, slots = s.tasks.map((t, i) => ({ t, i })).filter(({ t }) => t.date === day && !t.pinned && s.timer?.taskId !== t.id); const ordered = slots.map(x => x.t).sort((a, b) => rank[a.priority] - rank[b.priority] || (a.preferred ?? 1440) - (b.preferred ?? 1440)); slots.forEach(({ i }, n) => s.tasks[i] = ordered[n]); }
 export function addTimebox(s: State, id: string, day: string, start: number, minutes: number, pinned = true): void { const t = s.tasks.find(t => t.id === id); if (!t)
     return; s.blocks.push({ id: uid(), taskId: id, title: t.title, date: day, start: Math.max(0, Math.min(1440 - minutes, start)), minutes, color: s.channels.find(c => c.id === t.channel)?.color || '#709b8d', pinned }); }
-export function scheduleDay(s: State, day: string, options: {reschedule?: boolean; from?: number; project?: boolean; taskId?: string; noSplit?: boolean; allowOutside?: boolean} = {}): {missed: string[]; blocks: Block[]} {
+export function scheduleDay(s: State, day: string, options: {reschedule?: boolean; from?: number; project?: boolean; taskId?: string; noSplit?: boolean; allowOutside?: boolean; extendEnd?: boolean} = {}): {missed: string[]; blocks: Block[]} {
     const copy = options.project ? structuredClone(s) : s;
     const gap = copy.settings.gap || 0, missed: string[] = [], created: Block[] = [];
     if (options.reschedule) copy.blocks = copy.blocks.filter(b => b.date !== day || !b.taskId || b.pinned || copy.tasks.find(t => t.id === b.taskId)?.done || (options.taskId && b.taskId !== options.taskId));
@@ -183,8 +183,8 @@ export function scheduleDay(s: State, day: string, options: {reschedule?: boolea
         const window=copy.channels.find(c=>c.id===t.channel)?.hours?.[weekday]||copy.settings.weekdayHours?.[weekday]||{enabled:true,start:copy.settings.start,end:copy.settings.end};
         let remaining=Math.max(0,t.minutes-t.actual-(copy.timer?.taskId===t.id?timerSeconds(copy)/60:0))-copy.blocks.filter(b=>b.taskId===t.id&&b.date===day).reduce((n,b)=>n+b.minutes,0);
         if(remaining<=0)continue;
-        const floor=Math.max(options.allowOutside?0:window.start,options.from??0),ceiling=options.allowOutside?1440:Math.min(window.end,copy.shutdownTimes?.[day]??1440);
-        if((!window.enabled&&!options.allowOutside)||floor>=ceiling){missed.push(t.id);continue;}
+        const floor=Math.max(options.allowOutside?0:window.start,options.from??0),ceiling=options.allowOutside||options.extendEnd?1440:Math.min(window.end,copy.shutdownTimes?.[day]??1440);
+        if((!window.enabled&&!options.allowOutside&&!options.extendEnd)||floor>=ceiling){missed.push(t.id);continue;}
         remaining=Math.ceil(remaining/5)*5;
         const occupied=copy.blocks.filter(b=>b.date===day&&b.busy!==false).sort((a,b)=>a.start-b.start);
         const slots:{start:number;end:number}[]=[];let cursor=floor;

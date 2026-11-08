@@ -199,8 +199,8 @@ Local validation: regression tests cover idempotent repairs, manual edits, chang
 ## Calendar layer visibility follow-up
 
 - Each calendar explains its selected day's projection count and actual-time totals. Tasks that cannot fit around busy events before the cutoff appear in a review list rather than silently disappearing.
-- Optional extended-hours projections preview remaining free time through midnight without changing work hours, tasks, or saved timeboxes. The display preference is shared by the main and side calendar.
+- Optional extended-hours projections preview remaining free time through midnight while preserving the configured morning start, without changing work hours, tasks, or saved timeboxes. The display preference is shared by the main and side calendar.
 - Channel filters no longer let hidden unscheduled tasks consume projection slots. Saved busy events continue blocking time even when their calendar is hidden.
 - Recorded actual time stays visible independently of the board's completed-task visibility. Legacy actual totals without sessions use the same fallback ledger as reports.
 - Duration-only records are grouped under a labeled Actual summary at the top of each day, with readable task names and durations on expansion. Their clock intervals are never invented.
-- Validation: 128 unit tests pass. Local browser checks covered a full working-day cutoff, extended preview, hidden completed tasks, untimed details, and toggling both layers off and on in main/side views.
+- Validation: 129 unit tests pass. Local browser checks covered a full working-day cutoff, extended preview, hidden completed tasks, untimed details, and toggling both layers off and on in main/side views. Hosted checks verified extended preview and duration-only actuals with existing planner data.

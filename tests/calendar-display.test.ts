@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {initialState,task,type State} from '../lib/planner-model.ts';
+import {initialState,task,clockLabel,type State} from '../lib/planner-model.ts';
 import {calendarItems,calendarProjection,defaultCalendarDisplay} from '../lib/calendar-display.ts';
 import {stateSchema} from '../lib/state-schema.ts';
 import {applyCalendarSync} from '../lib/google-calendar.ts';
@@ -45,6 +45,12 @@ test('channel filtering gives visible tasks projection slots while hidden saved 
  s.settings.calendarDisplay!.hiddenGoogleCalendars=['hidden'];
  const rows=calendarItems(s,day,{now,filter:t=>t.channel==='personal'});
  assert.equal(rows.length,1);assert.equal(rows[0].title,'Visible work');assert.equal(rows[0].start,600);
+});
+test('extended projections preserve the next day start and label midnight correctly',()=>{
+ const s=setup();s.settings.calendarDisplay!.projectionsOutsideHours=true;
+ const projection=calendarProjection(s,day,{now:Date.parse('2026-11-06T20:00:00Z')});
+ assert.equal(projection.blocks[0].start,s.settings.start);
+ assert.equal(clockLabel(1440),'12:00 AM');assert.equal(clockLabel(1440,'24'),'00:00');assert.equal(clockLabel(720),'12:00 PM');
 });
 test('actual toggle shows completed history independently of board completed visibility',()=>{
  const s=setup();tracked(s);s.tasks[0].done=true;s.tasks[0].archived=true;

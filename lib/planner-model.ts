@@ -176,7 +176,7 @@ export function fromKey(value: string): Date { return new Date(`${value}T12:00:0
 export function shiftDate(value: string, days: number): string { const d = fromKey(value); d.setDate(d.getDate() + days); return dateKey(d); }
 export function weekOf(value: string): string { const d = fromKey(value); return shiftDate(value, -((d.getDay() + 6) % 7)); }
 export function duration(m: number): string { const n = Math.round(m); return n >= 60 ? `${Math.floor(n / 60)}h${n % 60 ? ` ${n % 60}m` : ''}` : `${n}m`; }
-export function clockLabel(minutes: number, format: '12' | '24' = '12'): string { if(format === '24') return inputTime(minutes);  const h = Math.floor(minutes / 60); return `${h % 12 || 12}:${String(minutes % 60).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`; }
+export function clockLabel(minutes: number, format: '12' | '24' = '12'): string { minutes=((minutes%1440)+1440)%1440;if(format === '24') return inputTime(minutes);  const h = Math.floor(minutes / 60); return `${h % 12 || 12}:${String(minutes % 60).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`; }
 export function inputTime(minutes: number): string { return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`; }
 export function parseTime(value: string): number { const [h, m] = value.split(':').map(Number); return h * 60 + m; }
 export function task(title: string, day: string | null, channel = 'product', minutes = 30): Task { return { id: uid(), title, date: day, channel, minutes, actual: 0, done: false, notes: '', subtasks: [], priority: 'normal', recurrence: 'none', due: '', archived: false }; }
