@@ -20,7 +20,7 @@ export function CalendarMenu({data,connection:c,onChange,onManage}:{data:State;c
       <button type="button" role="checkbox" aria-label="Daylight Calendar" aria-checked={prefs.local} onClick={()=>edit({local:!prefs.local})}>{tick(prefs.local,'#ffb44e')}<span>Daylight Calendar<small>Saved events and scheduled task timeboxes</small></span></button>
       {([
         ['projections','Task projections','Suggested times for remaining work'],
-        ['actual','Task actual times','When you worked, from tracked time'],
+        ['actual','Task actual times','Recorded sessions and manual daily totals'],
         ['comparison','Planned vs. actual',prefs.actual?'Show scheduled time alongside actual time':'Turn on Task actual times first'],
         ['completions','Task completions','Completion checkmarks and day markers'],
       ] as const).map(([key,label,description])=>{const disabled=key==='comparison'&&!prefs.actual,checked=!disabled&&prefs[key];return <button type="button" role="checkbox" aria-label={label} aria-checked={checked} disabled={disabled} className={key==='comparison'?'calendar-nested-choice':''} key={key} onClick={()=>edit({[key]:!prefs[key]})}>{tick(checked)}<span>{label}<small>{description}</small></span></button>;})}

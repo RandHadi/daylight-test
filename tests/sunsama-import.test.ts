@@ -15,6 +15,18 @@ test('reimport skips known source IDs and preserves edits and all related time r
  const first=mergeSunsama(base(),bundle([exported]));first.state.tasks.at(-1)!.title='Edited in Daylight';
  const second=mergeSunsama(first.state,bundle([exported]));assert.deepEqual(second.state,first.state);assert.equal(second.report.skipped,1);assert.equal(second.report.tasks,0);
 });
+test('manual imported duration without an end time remains a day total',()=>{
+ const result=mergeSunsama(base(),bundle([exported])),entry=result.state.sessions!.at(-1)!;
+ assert.equal(entry.seconds,300);assert.equal(entry.day,'2026-11-07');
+ assert.equal(entry.started,0);assert.equal(entry.ended,0);assert.equal(entry.timing,'day-total');
+ assert.equal(result.state.tasks.at(-1)!.actual,5);
+});
+test('imported time with an explicit start and end retains its interval',()=>{
+ const result=mergeSunsama(base(),bundle([{...exported,actualTime:[{...exported.actualTime[0],endDate:'2026-11-07T18:05:00Z'}]}]));
+ const entry=result.state.sessions!.at(-1)!;
+ assert.equal(entry.timing,'interval');assert.equal(entry.started,Date.parse('2026-11-07T18:00:00Z'));
+ assert.equal(entry.ended,Date.parse('2026-11-07T18:05:00Z'));assert.equal(entry.seconds,300);
+});
 test('backlog, completion dates, subtasks, priorities and note content survive mapping',()=>{
  const result=mergeSunsama(base(),bundle([{...exported,startDate:'',completedDate:'2026-11-08T00:30:00Z',latestDailyPriority:'Priority',backlogPriority:'High',subtasks:[{_id:'sub1',title:'Step',completedDate:'2026-11-07T20:00:00Z',timeEstimate:0}]}],[{_id:'task1',scheduledDate:'not scheduled for a specific date',isBacklogged:true,completed:true,completedOnDate:'2026-11-07',isArchived:false,deleted:false,backlogHorizon:'in the next month'}]));
  const t=result.state.tasks.at(-1)!;assert.equal(t.date,null);assert.equal(t.completedOn,'2026-11-07');assert.equal(t.subtasks[0].done,true);assert.equal(t.bucket,'Next month');assert.equal(t.backlogPriority,'high');assert.equal(t.priority,'important');assert.equal(t.notes,'Read source (https://example.test)');

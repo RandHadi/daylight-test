@@ -12,6 +12,17 @@ test('projections are virtual, honor busy time, and do not write timeboxes',()=>
 test('actual and planned layers can be controlled independently',()=>{const s=setup();tracked(s);s.tasks[0].done=true;s.tasks[0].completedOn=day;let items=calendarItems(s,day,{now});assert.deepEqual(items.map(i=>i.layer),['planned','actual']);assert.equal(items.find(i=>i.layer==='actual')?.start,615);assert.equal(items.find(i=>i.layer==='actual')?.minutes,30);s.settings.calendarDisplay!.comparison=false;assert.deepEqual(calendarItems(s,day,{now}).map(i=>i.layer),['actual']);s.settings.calendarDisplay!.completions=false;assert.equal(calendarItems(s,day,{now})[0].completed,false);s.settings.calendarDisplay!.actual=false;assert.deepEqual(calendarItems(s,day,{now}).map(i=>i.layer),['scheduled']);});
 test('actual intervals are split at midnight in the planner timezone',()=>{const s=setup();tracked(s);s.settings.timezone='America/Los_Angeles';s.sessions![0]={...s.sessions![0],started:Date.parse('2026-11-08T07:45:00Z'),ended:Date.parse('2026-11-08T08:15:00Z')};const a=calendarItems(s,'2026-11-07',{now}).find(i=>i.layer==='actual')!,b=calendarItems(s,'2026-11-08',{now}).find(i=>i.layer==='actual')!;assert.equal(a.start,1425);assert.equal(a.minutes,15);assert.equal(b.start,0);assert.equal(b.minutes,15);});
 test('untimed manual entries remain day summaries instead of invented clock times',()=>{const s=setup();s.sessions=[{id:'manual',taskId:s.tasks[0].id,title:'Focused work',channel:'product',day,seconds:2400,started:0,ended:0,kind:'manual'}];const item=calendarItems(s,day,{now}).find(i=>i.layer==='actual-summary')!;assert.equal(item.allDay,true);assert.equal(item.detail,'40m actual · time not recorded');});
+test('legacy imported manual durations no longer draw inferred time slots',()=>{
+  const s=setup();tracked(s);s.blocks=[];s.tasks[0].done=true;
+  s.sessions![0]={...s.sessions![0],id:'sunsama:example:time:0',kind:'manual'};
+  const before=JSON.stringify(s),items=calendarItems(s,day,{now});
+  assert.deepEqual(items.map(i=>i.layer),['actual-summary']);
+  assert.equal(items[0].detail,'30m actual · time not recorded');
+  assert.equal(JSON.stringify(s),before);
+  s.sessions![0].timing='interval';
+  assert.equal(calendarItems(s,day,{now})[0].layer,'actual');
+  assert.equal(stateSchema.parse(s).sessions![0].timing,'interval');
+});
 test('completion markers include archived history while respecting task and channel filters',()=>{const s=setup();s.tasks[0].done=true;s.tasks[0].archived=true;s.tasks[0].completedOn=day;assert.equal(calendarItems(s,day,{now})[0].layer,'completion');assert.equal(calendarItems(s,day,{now,completed:false}).length,0);assert.equal(calendarItems(s,day,{now,filter:()=>false}).length,0);s.tasks[0].deleted=new Date(now).toISOString();assert.equal(calendarItems(s,day,{now}).length,0);});
 test('calendar settings round trip through the saved planner schema',()=>{const s=setup();s.settings.calendarDisplay!.hiddenGoogleCalendars=['personal@example.test'];s.settings.calendarDisplay!.actual=false;assert.deepEqual(stateSchema.parse(s).settings.calendarDisplay,s.settings.calendarDisplay);});
 

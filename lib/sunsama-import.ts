@@ -70,9 +70,10 @@ export function mergeSunsama(current:State,input:unknown) {
             entries.forEach((e,index)=>{
                 const started=Date.parse(e.startDate),ended=e.endDate?Date.parse(e.endDate):undefined;
                 const duration=e.duration??(ended===undefined?0:(ended-started)/1000);
-                if(!Number.isFinite(started)||!Number.isFinite(duration)||duration<0)throw new Error('An actual-time entry has an invalid date or duration. No records were changed.');
+                if(!Number.isFinite(started)||!Number.isFinite(duration)||duration<0||(ended!==undefined&&(!Number.isFinite(ended)||ended<started)))throw new Error('An actual-time entry has an invalid date or duration. No records were changed.');
                 if(!duration)return;
-                s.sessions!.push({id:`${subtaskId||taskId}:time:${index}`,taskId,subtaskId,title:t.title,channel:ch!.id,day:zonedParts(started,zone).day,seconds:duration,started,ended:ended??started+duration*1000,kind:e.isTimerEntry?'timer':'manual'});
+                const interval=!!e.isTimerEntry||(ended!==undefined&&ended>started);
+                s.sessions!.push({id:`${subtaskId||taskId}:time:${index}`,taskId,subtaskId,title:t.title,channel:ch!.id,day:zonedParts(started,zone).day,seconds:duration,started:interval?started:0,ended:interval?(ended??started+duration*1000):0,kind:e.isTimerEntry?'timer':'manual',timing:interval?'interval':'day-total'});
                 seconds+=duration;report.sessions++;
             });
             return seconds/60;

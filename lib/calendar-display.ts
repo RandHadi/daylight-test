@@ -57,7 +57,10 @@ export function calendarItems(s:State,day:string,{filter=()=>true,completed=true
     if(active&&t){for(const [i,segment]of [...(active.segments||[]),...(active.started?[{start:active.started,end:now}]:[])].entries())entries.push({id:`running:${i}`,taskId:t.id,title:t.title,channel:t.channel,day,started:segment.start,ended:segment.end,seconds:(segment.end-segment.start)/1000,kind:'timer'});}
     for(const e of entries){
       const t=tasks.get(e.taskId);if(!allowed(t)||e.seconds<=0)continue;
-      if(!e.started||e.ended<=e.started){if(e.day===day)summary.set(t!.id,(summary.get(t!.id)||0)+e.seconds/60);continue;}
+      // Older Sunsama imports inferred an end for manual duration-only entries.
+      // Their recorded date is reliable, but their apparent clock interval is not.
+      const unknownImportedTime=e.kind==='manual'&&e.id.startsWith('sunsama:')&&!e.timing;
+      if(e.timing==='day-total'||unknownImportedTime||!e.started||e.ended<=e.started){if(e.day===day)summary.set(t!.id,(summary.get(t!.id)||0)+e.seconds/60);continue;}
       const a=Math.max(start,e.started),b=Math.min(end,e.ended);if(b<=a)continue;
       const at=zonedParts(a,zone).minute,to=b===end?1440:zonedParts(b,zone).minute;
       // A fall-back clock change can repeat an hour; keep the displayed interval positive.

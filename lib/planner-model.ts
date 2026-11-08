@@ -20,6 +20,7 @@ export type TimeEntry = {
     started: number;
     ended: number;
     kind: 'timer' | 'manual' | 'legacy';
+    timing?: 'interval' | 'day-total';
 };
 export type Series = {
     id: string;
