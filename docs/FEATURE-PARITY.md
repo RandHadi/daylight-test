@@ -89,3 +89,9 @@ The Sites integration instructions require `list_plugin_eligibility` before decl
 ## Direct Google implementation validation · November 7
 
 58 automated cases passed, including 11 new Google encryption, PKCE, timezone/DST, pagination, cancellation reconciliation, schema preservation and explicit publish/idempotence cases. 17 local API checks passed. Local browser checks verified setup status, timed/all-day event display, read-only event details and meeting-to-task import using temporary fixtures; fixtures were restored afterward. Provider authorization, actual calendar reads and the read/write scope upgrade were subsequently verified on the hosted app. Token refresh after expiry and actual external publishing remain unverified.
+
+## Import persistence repair · November 7
+
+Fixed stale draft recovery that could relabel an old snapshot with the current revision after background calendar synchronization. Mismatched or incomplete drafts are now preserved separately while the cloud planner stays active. Conflicted tabs cannot write through background changes, and users can load the latest planner without discarding their pending draft. Idle visible tabs check for newer cloud data. The server also rejects whole-state saves that omit existing non-sample task IDs; deletion and undo use recoverable tombstones.
+
+Validation: 71 unit cases, TypeScript, 17 existing local API checks, and the targeted API regression passed. Local browser testing confirmed concurrent-edit rejection, draft preservation and successful latest-version recovery. Hosted restoration and reload verification are recorded in the release evidence outside source.

@@ -59,3 +59,6 @@
 @media(max-width:760px){.board.board-scroll{grid-auto-columns:90%;flex-direction:row}}
 
 .sunsama-import{border-top:1px solid var(--line);margin-top:24px;padding-top:4px}.sunsama-import>.secondary{margin-top:12px}.import-summary{margin-top:16px;border:1px solid var(--line);padding:14px;border-radius:8px;line-height:1.6}.import-summary p{margin:8px 0}.import-backup{margin:12px 0}.import-backup .data-actions{gap:12px;font-size:11px}.import-backup a{text-decoration:underline}
+
+.draft-recovery{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 22px;background:var(--surface,#f5f7f4);border-bottom:1px solid var(--border,#dce4dd);font-size:12px;color:var(--text,#31433a)}
+.draft-recovery button{border:1px solid currentColor;border-radius:6px;padding:5px 9px;background:transparent;color:inherit;font:inherit;cursor:pointer}

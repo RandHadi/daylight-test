@@ -11,6 +11,7 @@ import { GoogleCalendarPanel, GoogleEventDetails, useGoogleCalendar } from './go
 import { stateSchema } from '@/lib/state-schema';
 import { DayBoard } from './day-board';
 import { SunsamaImportPanel, type ImportResult } from './sunsama-import-panel';
+import { selectPlannerDraft, applyUndo } from '@/lib/planner-sync';
 type View = 'home' | 'today' | 'backlog' | 'objectives' | 'review' | 'archive';
 type Modal = {
     type: 'task';
@@ -50,6 +51,8 @@ export default function Planner({ name, userId }: {
 }) {
     const [data, setData] = useState<State | null>(null), dataRef = useRef<State | null>(null), revision = useRef(0), pending = useRef(false), saving = useRef(false), blocked = useRef(false);
     const [saveStatus, setSaveStatus] = useState('Loading your planner…'), [saveError, setSaveError] = useState(''), [loadError, setLoadError] = useState('');
+    const [recoveredDrafts, setRecoveredDrafts] = useState<string[]>([]);
+    const refreshing = useRef(false);
     const [today, setToday] = useState(dateKey()), [selected, setSelected] = useState(dateKey()), [view, setView] = useState<View>('home'), [filter, setFilter] = useState('all'), [modal, setModal] = useState<Modal>(null), [calendar, setCalendar] = useState(true), [mobileCalendar, setMobileCalendar] = useState(false), [mobileNav, setMobileNav] = useState(false), [toast, setToast] = useState(''), [draggingId, setDraggingId] = useState<string | null>(null), [query, setQuery] = useState(''), [tick, setTick] = useState(0), [planStep, setPlanStep] = useState(0), [calMonth, setCalMonth] = useState(dateKey());
     const [bucketFilter, setBucketFilter] = useState('all'), [folderFilter, setFolderFilter] = useState('all'), [priorityFilter, setPriorityFilter] = useState('all'), [playlist, setPlaylist] = useState(false);
     const [sidePanel,setSidePanel]=useState<'calendar'|'backlog'>('calendar');
@@ -65,7 +68,15 @@ export default function Planner({ name, userId }: {
         const t = setTimeout(() => setToast(''), 5000);
         return () => clearTimeout(t);
     } }, [toast]);
-    const load = useCallback(async () => { try {
+    const preserveDraft = useCallback((raw: string) => {
+        const key = 'daylight-recovered-drafts:' + userId;
+        const stored = JSON.parse(localStorage.getItem(key) || '[]') as string[];
+        if (!stored.includes(raw)) stored.push(raw);
+        // Only remove the active draft after a separate recovery copy is durable.
+        localStorage.setItem(key, JSON.stringify(stored));
+        setRecoveredDrafts(stored);
+    }, [userId]);
+    const load = useCallback(async () => { if (saving.current || importing.current || refreshing.current) return; refreshing.current = true; try {
         setLoadError('');
         const r = await fetch('/api/planner', { cache: 'no-store' });
         const body = await r.json() as {
@@ -75,36 +86,33 @@ export default function Planner({ name, userId }: {
         };
         if (!r.ok)
             throw new Error(body.error);
+        const cloud = body.state || initialState(dateKey());
+        const key = 'daylight-draft:' + userId;
+        const raw = localStorage.getItem(key);
+        const resolved = selectPlannerDraft(cloud, body.revision, raw);
+        if (resolved.archive) {
+            preserveDraft(resolved.archive);
+            if (localStorage.getItem(key) === raw) localStorage.removeItem(key);
+        }
+        setRecoveredDrafts(JSON.parse(localStorage.getItem('daylight-recovered-drafts:' + userId) || '[]'));
         revision.current = body.revision;
-        let fresh = upgradeState(body.state || initialState(dateKey()));
+        blocked.current = false;
+        setSaveError('');
+        let fresh = upgradeState(resolved.state);
         const day = zonedParts(Date.now(), fresh.settings.timezone!).day;
         maintainDay(fresh, day);
         setToday(day);
         setSelected(day);
-        try {
-            const raw = localStorage.getItem('daylight-draft:' + userId);
-            if (raw) {
-                const draft = JSON.parse(raw);
-                fresh = upgradeState(stateSchema.parse(draft.state) as State);
-                if (draft.revision !== body.revision) {
-                    blocked.current = true;
-                    setSaveError('A recovered draft conflicts with a newer cloud version. Export your draft before reloading.');
-                }
-                else
-                    pending.current = true;
-                setToast('Recovered your unsaved draft.');
-            }
-        }
-        catch { }
+        if (resolved.recovered) setToast('Recovered your unsaved draft.');
         dataRef.current = fresh;
         setData(fresh);
-        if (JSON.stringify(fresh) !== JSON.stringify(body.state))
-            pending.current = true;
-        setSaveStatus(body.state ? 'All changes saved' : 'Sample workspace');
+        undo.current = null;
+        pending.current = JSON.stringify(fresh) !== JSON.stringify(body.state);
+        setSaveStatus(pending.current ? 'Saving…' : 'All changes saved');
     }
     catch (e) {
         setLoadError(e instanceof Error ? e.message : 'Could not load your planner.');
-    } }, []);
+    } finally { refreshing.current = false; } }, [userId, preserveDraft]);
     useEffect(() => { load(); if (window.matchMedia('(max-width:760px)').matches)
         setView('today'); }, [load]);
     const flush = useCallback(async () => { if (saving.current || blocked.current)
@@ -144,7 +152,7 @@ export default function Planner({ name, userId }: {
             break;
         }
     } saving.current = false; }, []);
-    const change = (fn: (s: State) => void, canUndo = false) => { if (!dataRef.current || importing.current)
+    const change = (fn: (s: State) => void, canUndo = false) => { if (!dataRef.current || importing.current || blocked.current || refreshing.current)
         return; if (canUndo)
         undo.current = structuredClone(dataRef.current); const s = structuredClone(dataRef.current); fn(s); reconcileEstimates(s); if (s.settings.autoSort) {
         for (const d of new Set(s.tasks.map(t => t.date).filter(Boolean)))
@@ -168,7 +176,37 @@ export default function Planner({ name, userId }: {
     useEffect(() => { const t = setInterval(() => { setTick(n => n + 1); setToday(dataRef.current?.settings.timezone ? zonedParts(Date.now(), dataRef.current.settings.timezone).day : dateKey()); }, 1000); return () => clearInterval(t); }, []);
     useEffect(() => { calendarRef.current?.scrollTo({ top: Math.max(0, ((data?.settings.start || 540) / 60 - 1) * 64) }); }, [calendar, sidePanel, selected, view, !!data]);
     useEffect(() => { if (data && pending.current)
-        void flush(); }, [!!data, flush]);
+        void flush(); }, [data, flush]);
+    const loadLatest = async () => {
+        if (saving.current || importing.current) return;
+        try {
+            if (dataRef.current && pending.current) preserveDraft(JSON.stringify({state:dataRef.current,revision:revision.current}));
+            await load();
+        } catch { setSaveError('Your draft could not be preserved. Export it before reloading.'); }
+    };
+    // Refresh idle tabs on focus and periodically. Recheck after the request so
+    // an edit or import that began in flight can never be replaced by this read.
+    useEffect(() => {
+        let cancelled = false;
+        const refresh = async () => {
+            if (document.visibilityState !== 'visible' || modal || pending.current || saving.current || blocked.current || importing.current || refreshing.current) return;
+            const base = revision.current;
+            try {
+                const response = await fetch('/api/planner', {cache:'no-store'});
+                if (!response.ok) return;
+                const latest = await response.json() as {state:State|null;revision:number};
+                if (cancelled || !latest.state || latest.revision <= base || revision.current !== base || pending.current || saving.current || blocked.current || importing.current || refreshing.current) return;
+                revision.current = latest.revision;
+                dataRef.current = upgradeState(latest.state);
+                setData(dataRef.current);undo.current = null;
+                setSaveStatus('All changes saved');
+            } catch { /* Keep the visible planner and retry on the next focus. */ }
+        };
+        const timer = setInterval(refresh, 30000);
+        window.addEventListener('focus', refresh);
+        document.addEventListener('visibilitychange', refresh);
+        return () => {cancelled=true;clearInterval(timer);window.removeEventListener('focus',refresh);document.removeEventListener('visibilitychange',refresh);};
+    }, [modal]);
     useEffect(() => { const online = () => { if (pending.current)
         void flush(); }; window.addEventListener('online', online); return () => window.removeEventListener('online', online); }, [flush]);
     useEffect(() => { if (data && data.lastMaintenance !== today)
@@ -205,7 +243,7 @@ export default function Planner({ name, userId }: {
       });
       const chosen=cards.find(card=>card.dataset.taskId===selectedTaskId)?.dataset.taskId||cards[0]?.dataset.taskId,t=dataRef.current?.tasks.find(t=>t.id===chosen);
       if(k==='arrowdown'||k==='arrowup'){e.preventDefault();const current=cards.findIndex(c=>c.dataset.taskId===selectedTaskId);const next=cards[Math.max(0,Math.min(cards.length-1,current+(k==='arrowdown'?1:-1)))];if(next){setSelectedTaskId(next.dataset.taskId!);next.focus();next.scrollIntoView({block:'nearest'});}return;}
-      if(command){if(k==='enter'&&t){e.preventDefault();openTask(t.id);}if((k==='delete'||k==='backspace')&&t){e.preventDefault();change(s=>{if(s.timer?.taskId===t.id)finishTimer(s);s.tasks.find(n=>n.id===t.id)!.deleted=new Date().toISOString();s.blocks=s.blocks.filter(b=>b.taskId!==t.id);},true);notify('Task moved to trash.');}if(k==='z'&&undo.current){e.preventDefault();const old=undo.current;undo.current=null;change(s=>Object.assign(s,old));}return;}
+      if(command){if(k==='enter'&&t){e.preventDefault();openTask(t.id);}if((k==='delete'||k==='backspace')&&t){e.preventDefault();change(s=>{if(s.timer?.taskId===t.id)finishTimer(s);s.tasks.find(n=>n.id===t.id)!.deleted=new Date().toISOString();s.blocks=s.blocks.filter(b=>b.taskId!==t.id);},true);notify('Task moved to trash.');}if(k==='z'&&undo.current){e.preventDefault();const old=undo.current;undo.current=null;change(s=>applyUndo(s,old));}return;}
       if(['a','q','p','f','h','b','g','/','?','t','c','x','d','z','w','e','o',' '].includes(k))e.preventDefault();
       if(k==='a')openTask();if(k==='q')setModal({type:'quick'});if(k==='p'){setPlanStep(0);setModal({type:'plan'});}if(k==='o')setModal({type:'shutdown'});
       if(k==='h')go('home');if(k==='b')go('backlog');if(k==='t')go('today');if(k==='/')setModal({type:'search'});if(k==='?')setModal({type:'shortcuts'});
@@ -321,7 +359,8 @@ export default function Planner({ name, userId }: {
  <div className="channels"><div className="sidebar-label"><span>CHANNELS</span><IconButton label="Manage channels" onClick={() => setModal({ type: 'settings' })}><Plus size={14}/></IconButton></div><button className={`channel-filter ${filter === 'all' ? 'chosen' : ''}`} onClick={() => setFilter('all')}><span className="all-dot"/>All channels<small>{liveTasks.filter(t => !t.done).length}</small></button>{[...new Set(data.channels.map(c => c.context))].map(context => <div key={context}><button className={`context-heading ${filter === context ? 'chosen' : ''}`} onClick={() => setFilter(filter === context ? 'all' : context)}><ChevronDown size={11}/>{context}</button>{data.channels.filter(c => c.context === context && !c.disabled).map(c => <button key={c.id} className={`channel-filter ${filter === c.id ? 'chosen' : ''}`} onClick={() => setFilter(filter === c.id ? 'all' : c.id)}><span style={{ background: c.color }}/>{c.name}<small>{liveTasks.filter(t => t.channel === c.id && !t.done).length || ''}</small></button>)}</div>)}</div>
  <div className="sidebar-bottom"><button onClick={() => go('archive')}><Archive size={15}/>Archive</button><button onClick={() => setModal({ type: 'settings' })}><Settings size={15}/>Settings<ArrowUpRight size={12}/></button><div className="sidebar-footnote"><span className="status-dot"/>Your space to slow down.<button aria-label="Keyboard shortcuts" onClick={() => setModal({ type: 'shortcuts' })}><Keyboard size={14}/></button></div></div></aside>
  <main className="main"><header className="topbar"><div className="breadcrumbs"><IconButton className="mobile-menu" label="Toggle navigation" onClick={() => setMobileNav(!mobileNav)}><Menu size={18}/></IconButton><House size={15}/><span>My workspace</span><ChevronRight size={12}/><strong>{({ home: 'Home', today: 'Today', backlog: 'Backlog', objectives: 'Weekly objectives', review: 'Weekly review', archive: 'Archive' })[view]}</strong></div><div className="topbar-right"><span className={`save-status ${saveError ? 'error' : ''}`}>{saving.current ? <LoaderCircle size={12}/> : saveError ? <AlertCircle size={12}/> : <CloudCheck size={13}/>}<span>{saveStatus}</span></span><IconButton label="Open search" onClick={() => setModal({ type: 'search' })}><Search size={17}/></IconButton><button className="tiny-avatar" onClick={() => setModal({ type: 'settings' })}>{name[0]?.toUpperCase()}</button></div></header>
- {saveError && <div className="save-error" role="alert"><AlertCircle size={15}/><span>{saveError}</span><button onClick={exportData}>Export draft</button>{!blocked.current && <button onClick={() => flush()}>Retry save</button>}{blocked.current && <button onClick={() => { localStorage.removeItem('daylight-draft:' + userId); window.location.reload(); }}>Discard draft & reload</button>}</div>}
+ {saveError && <div className="save-error" role="alert"><AlertCircle size={15}/><span>{saveError}</span><button onClick={exportData}>Export draft</button>{!blocked.current && <button onClick={() => flush()}>Retry save</button>}{blocked.current && <button onClick={loadLatest}>Load latest saved planner</button>}</div>}
+ {recoveredDrafts.length > 0 && <div className="draft-recovery" role="status"><span>An older local draft was preserved separately. You’re viewing the latest planner.</span><button onClick={() => download(`daylight-preserved-drafts-${today}.json`, JSON.stringify(recoveredDrafts.map(raw => { try { return JSON.parse(raw); } catch { return {raw}; } }), null, 2))}>Download preserved drafts</button></div>}
  {dueReminder && <div className="ritual-reminder" role="status"><Moon size={16}/><span>{dueReminder==='shutdown'?'Ready to close your day?':'Take a moment to plan your day.'}</span><button className="secondary" onClick={()=>{setSelected(today);setPlanStep(0);setModal({type:dueReminder==='shutdown'?'shutdown':'plan'});}}>Begin</button><button className="text-button" onClick={()=>change(s=>{s.reminderDismissals??={};s.reminderDismissals[`${today}:${dueReminder}`]=Date.now()+15*60000;})}>In 15 minutes</button><button className="icon" aria-label="Dismiss ritual reminder today" onClick={()=>change(s=>{s.reminderDismissals??={};s.reminderDismissals[`${today}:${dueReminder}`]=Date.now()+24*60*60000;})}><X size={14}/></button></div>}
  <div className="page-toolbar"><div className="title-group"><span className="eyebrow">{view === 'home' || view === 'today' ? 'ONE DAY AT A TIME' : 'MAKE ROOM FOR WHAT MATTERS'}</span><h1>{({ home: 'A little structure. A lot of space.', today: 'Make today a good day.', backlog: 'Good things, for another day.', objectives: 'A week with intention.', review: 'Look how far you’ve come.', archive: 'Out of sight. Still here.' })[view]}</h1></div><div className="toolbar-actions"><button className="secondary focus-button" onClick={() => startFocus()}><Focus size={15}/>Focus</button><button className="primary" onClick={() => { setPlanStep(0); setModal({ type: 'plan' }); }}><Sun size={15}/>Plan your day<ArrowRight size={14}/></button></div></div>
  <div className="view-toolbar"><div className="date-nav"><IconButton label={view === 'home' ? 'Previous 3 days' : 'Previous day'} onClick={() => setSelected(shiftDate(selected, view === 'review' || view === 'objectives' ? -7 : view === 'home' ? -3 : -1))}><ChevronLeft size={16}/></IconButton><IconButton label={view === 'home' ? 'Next 3 days' : 'Next day'} onClick={() => setSelected(shiftDate(selected, view === 'review' || view === 'objectives' ? 7 : view === 'home' ? 3 : 1))}><ChevronRight size={16}/></IconButton><strong>{view === 'review' || view === 'objectives' ? `${monthDay(weeks[0])} – ${fromKey(weeks[6]).getDate()}` : monthDay(selected)}</strong><button className="today-pill" onClick={() => { setSelected(today); setCalMonth(today); }}>Today</button></div><div className="view-controls"><span className={`compact-save ${saveError?'error':''}`} aria-live="polite">{saveStatus}</span>{data.tasks.some(t => t.sample) && <button className="sample-label" onClick={clearSamples} title="Remove the clearly marked example tasks">Sample tasks <span>· Start fresh</span></button>}{(view === 'home' || view === 'today') && <div className="segmented"><button className={view === 'home' ? 'active' : ''} onClick={() => go('home')}>Board</button><button className={view === 'today' ? 'active' : ''} onClick={() => go('today')}>Day</button></div>}<IconButton label={mobileCalendar ? 'Hide calendar' : 'Toggle calendar'} onClick={() => { if (window.innerWidth <= 760)
@@ -347,7 +386,7 @@ export default function Planner({ name, userId }: {
  {activeTask && <div className="focus-bar"><span className="focus-pulse"/><button onClick={() => setModal({ type: 'focus' })}><small>IN FOCUS</small>{data.timer?.subtaskId?activeTask.subtasks.find(st=>st.id===data.timer!.subtaskId)?.title:activeTask.title}</button><strong>{timeString}</strong><IconButton label={data.timer?.started ? 'Pause timer' : 'Resume timer'} onClick={toggleTimer}>{data.timer?.started ? <Pause size={16}/> : <Play size={16}/>}</IconButton><IconButton label="Finish focus session" onClick={() => { change(s => finishTimer(s)); notify('Focus time saved.'); }}><X size={16}/></IconButton></div>}
  {draggingId && <div className="drag-instruction"><GripVertical size={15}/>Drop onto a day, another task, or a calendar time.</div>}
  {toast && <div className="toast" role="status"><Check size={15}/><span>{toast}</span>{undo.current && <button onClick={() => { const previous = undo.current; undo.current = null; if (previous)
-        change(s => Object.assign(s, previous)); setToast('Change undone.'); }}>Undo</button>}<button aria-label="Dismiss notification" onClick={() => setToast('')}><X size={13}/></button></div>}
+        change(s => applyUndo(s, previous)); setToast('Change undone.'); }}>Undo</button>}<button aria-label="Dismiss notification" onClick={() => setToast('')}><X size={13}/></button></div>}
  <input hidden type="file" ref={fileRef} accept=".json" onChange={onImport}/>
  {modal && <ModalShell label={modal.type === 'task' ? 'Task details' : modal.type === 'plan' ? 'Daily planning' : modal.type} sheet={modal.type === 'task'} wide={['plan', 'settings', 'focus', 'assistant', 'weekly', 'sessions'].includes(modal.type)} onClose={() => {setModal(modal.type==='task'&&returnToPlan.current?{type:'plan'}:null);returnToPlan.current=false;}}>
  {modal.type === 'task' && <TaskEditor focusField={modal.focusField} key={modal.id || 'new'} data={data} initial={modal.id ? data.tasks.find(t => t.id === modal.id) : undefined} day={modal.day === undefined ? selected : modal.day} onSessions={id => setModal({ type: 'sessions', id })} onSave={(t, start, applyFuture) => { change(s => { saveTask(s,t,start,today,applyFuture); }, true);setModal(returnToPlan.current?{type:'plan'}:null);returnToPlan.current=false; notify('Task saved.'); }} onArchive={id => { change(s => { s.tasks.find(t => t.id === id)!.archived = true; s.blocks = s.blocks.filter(b => b.taskId !== id); if (s.timer?.taskId === id)

@@ -3,6 +3,8 @@ import { getDb } from '@/db';
 import { planners } from '@/db/schema';
 import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { stateSchema } from '@/lib/state-schema';
+import { missingTaskIds } from '@/lib/planner-sync';
+import type { State } from '@/lib/planner-model';
 export const dynamic='force-dynamic';
 const reply=(body:unknown,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'private, no-store'}});
 export async function GET(){
@@ -17,8 +19,10 @@ export async function POST(request:Request){
   const body=JSON.parse(raw);const parsed=stateSchema.safeParse(body.state);
   if(!parsed.success||!Number.isSafeInteger(body.revision)||body.revision<0)return reply({error:'This planner contains invalid fields. Check dates, task durations, and work hours.'},400);
   const db=getDb(),payload=JSON.stringify(parsed.data),now=Date.now();
+  const [current]=await db.select().from(planners).where(eq(planners.userId,user.userId)).limit(1);
+  if(current && (current.revision!==body.revision || missingTaskIds(JSON.parse(current.payload) as State,parsed.data as State).length))return reply({error:'A newer or more complete planner is saved. Load the latest saved planner; your local draft is preserved.'},409);
   if(body.revision===0){const rows=await db.insert(planners).values({userId:user.userId,payload,revision:1,updatedAt:now}).onConflictDoNothing().returning({revision:planners.revision});if(rows.length)return reply({revision:1});}
   else{const rows=await db.update(planners).set({payload,revision:body.revision+1,updatedAt:now}).where(and(eq(planners.userId,user.userId),eq(planners.revision,body.revision))).returning({revision:planners.revision});if(rows.length)return reply({revision:rows[0].revision});}
-  return reply({error:'Your planner changed in another tab. Export your pending changes before reloading.'},409);
+  return reply({error:'Your planner changed in another tab. Load the latest saved planner; your local draft is preserved.'},409);
  }catch{return reply({error:'Changes have not synced. Your draft remains here; try saving again.'},503);}
 }
