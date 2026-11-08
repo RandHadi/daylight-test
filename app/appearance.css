@@ -82,16 +82,18 @@
   background-image: repeating-linear-gradient(130deg, transparent 0, transparent 4px,
     var(--calendar-stripe,#ffffff33) 4px, var(--calendar-stripe,#ffffff33) 5px) !important;
 }
-:root [data-calendar-layer=projection][data-virtual=true]:is(.calendar-event,.calendar-grid-event,.month-event) {
+:root [data-calendar-layer=projection][data-virtual=true]:not([data-calendar-sources]):is(.calendar-event,.calendar-grid-event,.month-event) {
   background-color: color-mix(in srgb, var(--calendar-color) 18%, var(--paper));
   color: var(--ink);
 }
+:root [data-calendar-sources]:is(.calendar-event,.calendar-grid-event,.month-event) { border-style: solid !important; }
 :root .calendar-event strong { font-size: 12px; font-weight: 600; }
 :root .calendar-event>span { font-size: 10px; opacity: 1; }
 :root :is(.calendar-event,.calendar-grid-event) .calendar-layer-label { font-size: 9px; opacity: 1; }
 :root .calendar-grid-event strong { font-size: 12px; font-weight: 600; }
 :root .calendar-grid-event small { font-size: 10px; }
 :root :is(.hour-row>span,.calendar-hours>span) { color: var(--muted); font-size: 10px; }
+:root .calendar-hours>span { font-size: 9px; white-space: nowrap; }
 :root .hour-row>span { background: var(--bg); width: 41px; }
 :root .hour-row small { font-size: 8px; }
 :root .hour-row { border-color: var(--soft-line); }
