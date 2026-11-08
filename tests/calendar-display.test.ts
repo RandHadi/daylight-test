@@ -89,5 +89,23 @@ test('actual-only mode does not hide ambiguous or busy-only Google events',()=>{
 });
 test('identical events from different Google calendars are not collapsed',()=>{const s=matching();s.blocks.push({...s.blocks[1],id:'other-google',externalCalendarId:'work'});const items=calendarItems(s,day,{now});assert.equal(items.length,3);assert.equal(items.filter(i=>i.provider==='google').length,2);assert.equal(items.find(i=>i.taskId)?.sources?.length,2);});
 test('two distinct tasks with the same title and time remain separate',()=>{const s=matching(),t={...s.tasks[0],id:'another-task'};s.tasks.push(t);s.blocks.push({...s.blocks[0],id:'another-plan',taskId:t.id});const items=calendarItems(s,day,{now});assert.equal(items.length,3);assert.equal(items.filter(i=>i.taskId).length,2);assert.equal(items.filter(i=>i.provider==='google').length,1);});
-test('separate overlapping actual entries are retained even when they share exact times',()=>{const s=matching();s.sessions!.push({...s.sessions![0],id:'another-actual'});const items=calendarItems(s,day,{now});assert.equal(items.length,4);assert.equal(items.filter(i=>i.layer==='actual').length,2);assert.equal(s.sessions!.length,2);});
+test('identical actual entries share one calendar card while preserving every source record',()=>{
+  const s=matching();s.sessions!.push({...s.sessions![0],id:'another-actual'});
+  const before=JSON.stringify(s),items=calendarItems(s,day,{now});
+  assert.equal(items.length,1);assert.equal(items[0].layer,'actual');
+  assert.equal(items[0].sources?.filter(source=>source.label==='Actual time').length,2);
+  assert.equal(items[0].detail,'Google · Planned · Actual');
+  assert.equal(JSON.stringify(s),before);
+});
+test('partially overlapping actual entries remain separate when their times differ',()=>{
+  const s=matching();s.sessions!.push({...s.sessions![0],id:'later-actual',started:s.sessions![0].started+15*60000,ended:s.sessions![0].ended+15*60000});
+  const items=calendarItems(s,day,{now});
+  assert.equal(items.length,2);assert.equal(items.filter(i=>i.layer==='actual').length,2);
+});
+test('identical timeboxes share one visual card while preserving both saved schedules',()=>{
+  const s=setup();tracked(s);s.sessions=[];s.blocks.push({...s.blocks[0],id:'second-plan'});
+  const before=JSON.stringify(s),items=calendarItems(s,day,{now});
+  assert.equal(items.length,1);assert.equal(items[0].sources?.length,2);
+  assert.equal(JSON.stringify(s),before);
+});
 test('unchanged calendar refreshes preserve state and event order across windows',()=>{const s=matching();s.blocks.unshift({...s.blocks[1],id:'yesterday',date:'2026-11-06'});s.blocks.reverse();const before=JSON.stringify(s);applyCalendarSync(s,{from:'2026-11-06',to:'2026-11-09',blocks:s.blocks.filter(b=>b.provider==='google').reverse().map(b=>Object.fromEntries(Object.entries(b).reverse()) as typeof b),calendarIds:['personal'],failures:[],fetchedAt:now,connectionRevision:1});assert.equal(JSON.stringify(s),before);applyCalendarSync(s,{from:day,to:'2026-11-09',blocks:structuredClone(s.blocks.filter(b=>b.provider==='google'&&b.date===day)),calendarIds:['personal'],failures:[],fetchedAt:now+1000,connectionRevision:1});assert.equal(JSON.stringify(s),before);});

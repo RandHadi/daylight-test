@@ -177,6 +177,8 @@ Validation: 83 unit tests and TypeScript checks passed. Local browser verificati
 - Task actual times controls recorded intervals and untimed day totals. Planned vs. actual adds the corresponding scheduled intervals; it is visibly inactive while actual time is off. Actual-only mode also hides a uniquely matched Google timebox, while unrelated, ambiguous and busy-only events remain independent.
 - Task completions controls completion badges and day markers, without bringing back hidden scheduled intervals. A visible linked Google event can carry the badge without a duplicate completion card. Untimed actual totals never substitute for known scheduled intervals.
 - Menu descriptions explain each layer. The side-panel projection checkbox uses the same saved preference as both menus, and month view uses the same filtered entries as timed views.
-- Validation: all 108 tests pass, including all 32 combinations of the five display toggles, independent Google visibility, exact-match grouping, ambiguous events, and non-mutating display. Local browser checks verified visibility, save/reload persistence, disabled comparison state, and shared main/side projection controls.
+- Validation: all 110 tests pass, including all 32 combinations of the five display toggles, independent Google visibility, exact-match grouping, ambiguous events, and non-mutating display. Local browser checks verified visibility, save/reload persistence, disabled comparison state, and shared main/side projection controls.
 
 Reference: Sunsama's playlist documentation distinguishes generated projections from scheduled timeboxes; its February 6, 2026 changelog describes hiding matching calendar-originated plans in actual-only mode.
+
+- Follow-up duplicate check: identical time records or timeboxes for the same task share one visual card, with every source retained in the details. Distinct task IDs and differing intervals stay separate; time records and totals are unchanged.

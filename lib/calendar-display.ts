@@ -21,7 +21,7 @@ const source=(b:CalendarItem):CalendarSource=>({id:b.id,label:b.provider==='goog
 function combined(rows:CalendarItem[]):CalendarItem{
   const base=rows.find(b=>b.layer==='actual')||rows.find(b=>b.taskId)||rows[0];
   const sources=rows.flatMap(b=>b.sources||[source(b)]).sort((a,b)=>['Google Calendar','Planned time','Actual time'].indexOf(a.label)-['Google Calendar','Planned time','Actual time'].indexOf(b.label));
-  return {...base,virtual:true,sources,googleEventId:rows.find(b=>b.provider==='google')?.id||base.googleEventId,detail:sources.map(s=>s.label.replace(' Calendar','').replace(' time','')).join(' · ')};
+  return {...base,virtual:true,sources,googleEventId:rows.find(b=>b.provider==='google')?.id||base.googleEventId,detail:[...new Set(sources.map(s=>s.label.replace(' Calendar','').replace(' time','')))].join(' · ')};
 }
 /** Collapse exact display matches only; source records and time ledgers stay independent. */
 export function combineCalendarItems(items:CalendarItem[]):CalendarItem[]{
@@ -30,10 +30,9 @@ export function combineCalendarItems(items:CalendarItem[]):CalendarItem[]{
     if(!b.taskId||b.allDay||!['scheduled','planned','projection','actual'].includes(b.layer)||(b.layer==='projection'&&b.virtual)){other.push(b);continue;}
     const key=b.taskId+slot(b);taskGroups.set(key,[...(taskGroups.get(key)||[]),b]);
   }
-  for(const group of taskGroups.values()){
-    const actual=group.filter(b=>b.layer==='actual'),planned=group.filter(b=>b.layer!=='actual');
-    other.push(...(actual.length===1&&planned.length===1?[combined(group)]:group));
-  }
+  // Repeated records for one task at the exact same interval share a visual card.
+  // Keep every source in its detail view; never combine different tasks or intervals.
+  for(const group of taskGroups.values())other.push(...(group.length>1?[combined(group)]:group));
   const exactGroups=new Map<string,CalendarItem[]>();
   for(const b of other){const key=matchingSlot(b);exactGroups.set(key,[...(exactGroups.get(key)||[]),b]);}
   const result:CalendarItem[]=[];
