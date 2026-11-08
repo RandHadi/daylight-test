@@ -160,3 +160,8 @@ Validation: 83 unit tests and TypeScript checks passed. Local browser verificati
 - Shared calendars with freeBusyReader access appear in both calendar pickers, labeled Busy times only. Refresh calendar list picks up new shares.
 - A separate, incremental Google availability permission enables Freebusy API reads without requesting event details or write access. Existing event connections continue to sync while this permission is pending.
 - Busy periods use the calendar color, split across local midnight, block scheduling conflicts, and survive save/reload. Per-calendar errors preserve existing busy times. Availability periods cannot be imported as individual meeting tasks or combined with same-named task timeboxes.
+
+## Calendar zoom
+
+- Timed calendar views and the right calendar panel share 50–200% zoom in 25% steps, with a 100% reset. The preference is saved per user in this browser alongside layout settings.
+- Time-slot positions, event heights, overlap lanes, current-time and shutdown lines, and pointer scheduling/resizing use the same hour scale. Zoom preserves the visible time; horizontal date scrolling stays independent. Month view keeps its existing layout.

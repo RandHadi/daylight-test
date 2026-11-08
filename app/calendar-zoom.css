@@ -1,0 +1,14 @@
+.calendar-zoom{display:inline-flex;align-items:center;flex-shrink:0;border:1px solid var(--line);border-radius:5px;background:var(--paper);color:var(--ink)}
+.calendar-zoom>button{display:flex;align-items:center;justify-content:center;width:26px;height:27px;padding:0;border-radius:4px}
+.calendar-zoom>button:hover:not(:disabled){background:var(--hover,var(--sidebar))}
+.calendar-zoom>.calendar-zoom-reset{width:42px;font-size:11px;font-variant-numeric:tabular-nums}
+.calendar-heading:has(.calendar-zoom){gap:7px;padding-left:12px;padding-right:12px}
+.calendar-scroll{overflow-anchor:none}
+@media(max-width:760px){.calendar-heading .calendar-zoom>button{height:30px}}
+
+.scrollable-calendar{position:relative}
+.calendar-zoom-dock{position:absolute;top:0;left:0;width:48px;height:86px;z-index:9;display:flex;justify-content:center;padding-top:5px;background:var(--paper)}
+.calendar-zoom-dock .calendar-zoom{flex-direction:column;border:0;background:transparent}
+.calendar-zoom-dock .calendar-zoom>button:first-child{order:3}
+.calendar-zoom-dock .calendar-zoom-reset{order:2}
+.calendar-zoom-dock .calendar-zoom>button:last-child{order:1}
