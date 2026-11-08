@@ -4,4 +4,14 @@
 
 .calendar-week-head,.calendar-week-scroll{min-width:var(--calendar-min)}.calendar-week-scroll{overflow-x:hidden}.calendar-workspace{overflow-x:auto}
 .workspace-body{position:relative}.right-rail{margin-left:auto}
+.calendar-date-open{display:flex;align-items:center;gap:11px;flex:1;min-width:0;text-align:left;padding:7px 5px;margin:-7px -5px;border-radius:6px}
+.calendar-date-open:hover{background:var(--hover,var(--sidebar))}
+.calendar-date-expand{margin-left:auto;color:var(--muted);opacity:.65}
+.calendar-date-open:hover .calendar-date-expand,.calendar-date-open:focus-visible .calendar-date-expand{opacity:1}
+.task-side-panel .calendar-heading{justify-content:space-between}
+.task-side-panel .calendar-heading>.workspace-popup{margin-right:auto;min-width:0}
+.task-side-panel .calendar-heading summary{max-width:190px;overflow:hidden;text-overflow:ellipsis}
+.task-side-panel .task-side-content{flex:1;min-height:0;overscroll-behavior:contain}
+.task-side-panel .day-heading strong{font-size:24px}
+.task-side-panel .day-column{min-height:100%}
 @media(max-width:760px){.calendar-panel.mobile-show{position:absolute;top:0;bottom:0;right:42px;left:0}.view-toolbar{flex-shrink:0}}

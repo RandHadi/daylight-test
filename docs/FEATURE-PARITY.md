@@ -6,6 +6,13 @@ Statuses describe behavior, not a percentage: **Verified** means the stated Dayl
 
 ## Current acceptance matrix
 
+### Calendar date shortcut (November 8, 2026, v20)
+
+- Clicking the date heading in the right calendar opens the full week containing that date and swaps the right panel to that day's tasks, preserving channel filters and week-start preference.
+- Week headers select the day shown in the task panel. The panel includes channel filtering, collapse, and a return-to-board control. The selected panel persists with the saved layout.
+- Seven day columns fit the desktop calendar without hiding the last day; scrolling remains available on narrower screens. The selected date is highlighted, and the toolbar includes a week range and This week control.
+- Local browser checks covered date shortcut, day selection, returning to the board, repeated switching, and reload persistence. Type checking and the three calendar-window tests passed.
+
 ### Readable reference palette (November 8, 2026, v18–19)
 
 - Compared the signed-in Sunsama native board and calendar. Matched the neutral gray surfaces, charcoal content, stronger secondary labels, white cards and visible card borders more closely.

@@ -18,3 +18,7 @@
 .calendar-month-strip .month-cells>section{min-height:115px;max-height:240px;overflow-y:auto}
 @media(max-width:760px){.calendar-scroll-hint{font-size:8px;padding:7px}.calendar-month-strip .month-cells>section{padding:3px;min-height:100px}.calendar-month-strip .month-day{font-size:10px;width:18px;height:20px}.calendar-month-strip .month-add{padding:2px}.calendar-month-strip .month-event,.calendar-month-strip .month-task{font-size:9px}}
 .calendar-month-scroll{scroll-snap-type:x mandatory}.calendar-month-strip>.month-workspace{scroll-snap-align:start}
+.calendar-date-header.selected{background:var(--bg);box-shadow:inset 0 -2px var(--green)}
+.calendar-date-header.selected strong{font-weight:650;color:var(--ink)}
+.calendar-date-header.selected small{color:var(--ink)}
+.calendar-date-header>button:first-child:hover{background:var(--hover,var(--sidebar));border-radius:4px}
