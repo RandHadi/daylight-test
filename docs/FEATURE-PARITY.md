@@ -206,3 +206,5 @@ Local validation: regression tests cover idempotent repairs, manual edits, chang
 - Validation: 129 unit tests pass. Local browser checks covered a full working-day cutoff, extended preview, hidden completed tasks, untimed details, and toggling both layers off and on in main/side views. Hosted checks verified extended preview and duration-only actuals with existing planner data.
 
 - Projection appearance follows the supplied reference: pale channel-colored fill, regular dotted pattern, rounded white outline, and a top-aligned single-line colored title. Times and projection details remain available in the tooltip and accessible name. Main and side calendars share the treatment; scheduling and recorded actual-time styling are unchanged.
+
+- Planner chrome cleanup removes the preserved-draft banner, bottom status bar, empty-day message, per-day reflection links, calendar connection strip, and calendar drag hint. Settings now opens keyboard-shortcut help and retains preserved-draft downloads in the data section. Calendar syncing and the existing shortcut commands continue working.
