@@ -1,0 +1,27 @@
+/* Independent full-height columns: the main toolbar no longer spans the side panel. */
+.main>.workspace-body{height:100%;min-width:0}
+.planner-primary{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;container-type:inline-size}
+.planner-primary>.content-area{min-height:0}
+.workspace-body>.calendar-panel{flex-shrink:0;min-height:0;box-shadow:-6px 0 16px #00000005}
+.workspace-body>.calendar-panel>.calendar-heading{height:58px;min-height:58px;flex-shrink:0;padding:0 13px}
+.workspace-body>.right-rail{padding-top:72px;overflow-y:auto;background:var(--bg)}
+.backlog-side .backlog-side-scroll{padding:18px 12px 24px;overscroll-behavior:contain}
+.backlog-side .backlog-side-heading{padding:4px 10px 12px;display:flex;align-items:center;gap:10px}
+.backlog-side-heading h2{font-size:27px;font-weight:650;letter-spacing:-.4px;margin:0;flex:1}
+.backlog-side .open-full-backlog{opacity:0}.backlog-side-heading:hover .open-full-backlog,.backlog-side .open-full-backlog:focus-visible{opacity:1}
+.backlog-scope-button{display:block;min-width:0;max-width:calc(100% - 35px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:6px 8px;border:1px solid var(--line);border-radius:5px;background:var(--paper);font-size:14px;font-weight:600;color:var(--muted)}
+.backlog-side-tools{display:flex;align-items:center;gap:6px;padding:0 10px 10px}
+.backlog-side-tools .planner-menu-trigger,.backlog-tool-button{height:31px;width:34px;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--muted)}
+.backlog-side-tools .has-filter{border-color:var(--accent);color:var(--accent)}
+.backlog-side .bucket-heading{display:flex;align-items:center;gap:9px;padding:8px 10px 12px}
+.bucket-badge{width:21px;height:21px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-size:12px;font-weight:700;border-radius:50%}
+.backlog-side .bucket-heading h3{font-size:15px;font-weight:600;line-height:1.4;flex:1;margin:0}
+.backlog-side .bucket-heading .icon{width:24px;height:26px;color:var(--muted);flex-shrink:0}
+.backlog-side .backlog-bucket{margin-bottom:20px}
+.backlog-side .task-card{margin-bottom:10px;min-height:88px}
+.backlog-side .task-top{padding:14px 13px 12px}.backlog-side .task-card:has(.task-bottom) .task-top{padding-top:34px}.backlog-side .task-title{font-size:15px;line-height:1.45}
+.backlog-filter-popup h3{font-weight:500;font-size:13px;color:var(--muted);padding:5px 7px 8px;margin:0}
+@container(max-width:760px){.planner-primary .compact-save,.planner-primary .sample-label{display:none}}
+@container(max-width:670px){.planner-primary .date-nav>strong{display:none}.planner-primary .view-toolbar{padding-inline:12px}.planner-primary .view-controls{gap:6px}}
+@container(max-width:480px){.planner-primary .view-toolbar{flex-wrap:wrap;height:auto;gap:7px;padding-block:10px}.planner-primary .view-controls{margin-left:auto}.planner-primary .date-nav{gap:4px}}
+@media(max-width:760px){.workspace-body>.right-rail{padding-top:58px;overflow-y:auto}.workspace-body>.calendar-panel.mobile-show{top:0;bottom:0}.workspace-body>.calendar-panel>.calendar-heading{height:50px;min-height:50px}.backlog-side .backlog-side-scroll{padding-top:14px}}

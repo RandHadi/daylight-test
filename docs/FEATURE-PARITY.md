@@ -218,3 +218,9 @@ Local validation: regression tests cover idempotent repairs, manual edits, chang
 - Cards reveal quick actions on hover and keyboard focus, with compact popups for time, channel, repeat, source/task links, notes/comments, priority, and dates. More actions retains duplicate, trash, timer, and full task details. Saved quick edits preserve flexible timeboxes and recorded history.
 - Main planning surfaces use the supplied Sunsama reference background, #f8f8f9, with white task cards and popups.
 - Validation: 132 tests and type checking pass. Local browser checks covered date/month navigation, sidebar states, searchable channel filtering, time/channel/priority/notes/comment saves and reload, repeat options, Escape, channel management, and right-panel popup bounds. Full visual and feature parity remains partial.
+
+## Full-height right sidebar (November 8, 2026)
+
+- Main planner chrome and content share their own column; the right panel and permanent icon rail extend from the top edge to the bottom. Panel headers align with the main toolbar. Closing the panel expands the main column while keeping the rail accessible.
+- The backlog sidebar follows the supplied reference: All backlog tasks scope menu, Backlog title, compact channel/priority filters, colored horizon markers, and per-group capture buttons. Folder filtering remains in the scope menu.
+- Browser checks verified matching top/bottom bounds, independent backlog scrolling with a stationary header, collapse/reopen, calendar-panel switching, priority/horizon filtering, and adding a new task into its chosen group without changing the active view.

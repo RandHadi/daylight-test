@@ -9,7 +9,7 @@ import { RuleFields, TaskOrganization } from './planner-features';
 import { NotesEditor, RecurrenceNavigation } from './parity-features';
 
 type Menu='channel'|'priority'|'start'|'due'|'more'|'repeat'|'objective'|'schedule'|null;
-type Props={data:State;initial?:Task;day:string|null;today:string;author:string;saveStatus:string;saveError:string;focusField?:'planned'|'actual';
+type Props={data:State;initial?:Task;day:string|null;today:string;author:string;saveStatus:string;saveError:string;focusField?:'planned'|'actual';initialBucket?:string;
  onSave:(task:Task,start:number|null,applyFuture:boolean|'all',close?:boolean)=>boolean;
  onClose:()=>void;registerClose:(handler:(()=>boolean)|null)=>void;
  onTimer:(draft:Task,start:number|null,subId?:string)=>void;onSessions:(id:string)=>void;
@@ -29,7 +29,7 @@ export function DatePicker({value,today,monday,label,onPick,range=[]}:{value:str
 }
 export function TaskDetails(props:Props){
  const {data,initial,day,today,author,saveStatus,saveError,onClose,onTimer,onSessions,onDuplicate,onDelete,onArchive,onNavigate,onPromote}=props;
- const [draft,setDraft]=useState<Task>(()=>initial?structuredClone(initial):task('',day,data.settings.defaultChannel||data.channels[0].id));
+ const [draft,setDraft]=useState<Task>(()=>initial?structuredClone(initial):{...task('',day,data.settings.defaultChannel||data.channels[0].id),...props.initialBucket?{bucket:props.initialBucket}:{}});
  const [start,setStart]=useState<number|null>(()=>initial?(data.blocks.find(b=>b.taskId===initial.id)?.start??null):null);
  const [applyFuture,setApplyFuture]=useState<boolean|'all'>(false),[menu,setMenu]=useState<Menu>(null),[expanded,setExpanded]=useState(false),[sub,setSub]=useState(''),[comment,setComment]=useState(''),[attachments,setAttachments]=useState<TaskAttachment[]>([]),[uploading,setUploading]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const root=useRef<HTMLDivElement>(null),title=useRef<HTMLTextAreaElement>(null),subInput=useRef<HTMLInputElement>(null),fileInput=useRef<HTMLInputElement>(null),dragged=useRef<string|null>(null);
