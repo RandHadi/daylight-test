@@ -6,6 +6,13 @@ Statuses describe behavior, not a percentage: **Verified** means the stated Dayl
 
 ## Current acceptance matrix
 
+### Readable reference palette (November 8, 2026, v18)
+
+- Compared the signed-in Sunsama native board and calendar. Matched the neutral gray surfaces, charcoal content, stronger secondary labels, white cards and visible card borders more closely.
+- Removed faded completed-card and planned-event opacity. Calendar blocks retain their source colors at full strength, choose contrasting text, and keep actual-time stripes and projection indicators.
+- Applied the palette to navigation, channel labels, the calendar menu, task details and time labels. Existing user colors, tasks and settings are unchanged.
+- Validated the local board, task details, calendar, and dark theme; checked foreground contrast for the existing calendar palette and black/white/mid-gray edge colors. Type checking and production build are required before publication. This is a visual alignment, not a claim of exact pixel parity.
+
 | Audit IDs | Capability | Status | Evidence and remaining differences |
 |---|---|---|---|
 | T01 | Task details, notes and subtasks | Partial | Task details, safe Markdown writing/preview, planned/actual subtasks and promotion. Full rich-text/WYSIWYG editing remains different. |
