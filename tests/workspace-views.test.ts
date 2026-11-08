@@ -18,7 +18,7 @@ test('analytics counts sessions on their actual days without double-counting tas
  s.tasks[0].archived=true;assert.equal(analyticsRows(s,['2026-11-06'])[0].actual,30);
  s.tasks[0].deleted='2026-11-07';assert.equal(analyticsRows(s,['2026-11-06'])[0].actual,0);
 });
-test('analytics filters contexts, retains orphan history and escapes CSV channel names',()=>{
+test('analytics filters contexts, excludes orphan demo history and escapes CSV channel names',()=>{
  const s=initialState('2026-11-07');s.tasks=[];s.channels=[{id:'c',name:'Work, "Research"',context:'Work',color:'#aaaaaa'}];s.sessions=[{id:'x',taskId:'missing',title:'History',channel:'c',day:'2026-11-07',seconds:90,started:0,ended:90000,kind:'legacy'}];
- const rows=analyticsRows(s,['2026-11-07'],'Work');assert.equal(rows[0].actual,1.5);assert.equal(analyticsRows(s,['2026-11-07'],'Personal')[0].actual,0);assert.ok(analyticsCsv(rows,s).includes('"Work, ""Research""",1.50'));
+ assert.equal(analyticsRows(s,['2026-11-07'],'Work')[0].actual,0);const historical=task('History','2026-11-07','c',0);historical.id='missing';historical.archived=true;s.tasks.push(historical);const rows=analyticsRows(s,['2026-11-07'],'Work');assert.equal(rows[0].actual,1.5);assert.equal(analyticsRows(s,['2026-11-07'],'Personal')[0].actual,0);assert.ok(analyticsCsv(rows,s).includes('"Work, ""Research""",1.50'));
 });

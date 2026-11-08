@@ -13,7 +13,7 @@ export function analyticsRows(state:State,days:string[],filter='all') {
   const entries=state.sessions||[],sessionTasks=new Set(entries.map(s=>s.taskId));
   return days.map(day=>{
     const channels:Record<string,number>={};
-    for(const session of entries) if(session.day===day&&matches(session.channel)&&!state.tasks.find(t=>t.id===session.taskId)?.deleted)channels[session.channel]=(channels[session.channel]||0)+session.seconds/60;
+    for(const session of entries) if(session.day===day&&matches(session.channel)&&state.tasks.some(t=>t.id===session.taskId&&!t.deleted))channels[session.channel]=(channels[session.channel]||0)+session.seconds/60;
     // Old backups may contain task totals without session history. Never count both.
     for(const t of tasks)if(!sessionTasks.has(t.id)&&(t.completedOn||t.date)===day&&t.actual)channels[t.channel]=(channels[t.channel]||0)+t.actual;
     return {day,channels,actual:Object.values(channels).reduce((a,b)=>a+b,0),planned:tasks.filter(t=>t.date===day).reduce((n,t)=>n+t.minutes,0),completed:tasks.filter(t=>t.done&&(t.completedOn||t.date)===day).length};
