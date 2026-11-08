@@ -5,6 +5,7 @@ import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { stateSchema } from '@/lib/state-schema';
 import { initialState, type State } from '@/lib/planner-model';
 import { mergeSunsama } from '@/lib/sunsama-import';
+import {repairSunsamaImport} from '@/lib/sunsama-repair';
 export const dynamic='force-dynamic';
 const reply=(value:unknown,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'private, no-store'}});
 
@@ -28,12 +29,22 @@ export async function POST(request:Request){
         if(!draft.success)return reply({error:'Your current draft could not be backed up. Nothing was imported.'},400);
         const db=getDb(),[current]=await db.select().from(planners).where(eq(planners.userId,user.userId)).limit(1);
         const before=current?stateSchema.parse(JSON.parse(current.payload)) as State:initialState(new Date().toISOString().slice(0,10));
-        const result=mergeSunsama(before,body.source);
+        const repair=body.action==='repair'||body.action==='preview-repair';
+        let source=body.source;
+        if(repair){
+            const [backup]=await db.select({source:plannerImports.source}).from(plannerImports).where(eq(plannerImports.userId,user.userId)).orderBy(desc(plannerImports.createdAt)).limit(1);
+            if(!backup)return reply({error:'No original Sunsama import backup is available. Choose the original export first.'},400);
+            source=JSON.parse(backup.source);
+            if(body.action==='repair'&&body.revision!==current?.revision)return reply({error:'Daylight changed after the preview. Preview repairs again before applying them.'},409);
+        }
+        const repaired=repair?repairSunsamaImport(before,source):null;
+        if(body.action==='preview-repair')return reply({repairReport:repaired!.report,revision:current?.revision||0});
+        const result=repaired?{state:repaired.state,repairReport:repaired.report,report:{tasks:0,completed:0,backlog:0,channels:0,subtasks:0,sessions:0,timeboxes:0,skipped:0,recurrenceNotes:repaired.report.repeats,dateMarkers:0,warnings:[]}}:mergeSunsama(before,source);
         if(body.preview===true)return reply({report:result.report});
         const id=crypto.randomUUID(),now=Date.now(),revision=(current?.revision||0)+1;
         const write=current?db.update(planners).set({payload:JSON.stringify(result.state),revision,updatedAt:now}).where(and(eq(planners.userId,user.userId),eq(planners.revision,current.revision))).returning({revision:planners.revision}):db.insert(planners).values({userId:user.userId,payload:JSON.stringify(result.state),revision,updatedAt:now}).onConflictDoNothing().returning({revision:planners.revision});
         const [_,saved]=await db.batch([
-            db.insert(plannerImports).values({id,userId:user.userId,source:JSON.stringify(body.source),before:JSON.stringify(before),draft:JSON.stringify(draft.data),report:JSON.stringify(result.report),createdAt:now}),write,
+            db.insert(plannerImports).values({id,userId:user.userId,source:JSON.stringify(source),before:JSON.stringify(before),draft:JSON.stringify(draft.data),report:JSON.stringify(repaired?.report||result.report),createdAt:now}),write,
         ]);
         if(!saved.length)return reply({error:'Daylight changed in another tab. Your backups are safe; preview and import again to merge with the latest version.'},409);
         return reply({...result,revision,backupId:id});

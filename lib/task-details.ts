@@ -41,5 +41,7 @@ export function preserveTaskDetails(saved:State,incoming:State) {
         // An older open client may not yet know these fields exist.
         if(task.comments===undefined&&old.comments)task.comments=structuredClone(old.comments);
         if(task.activity===undefined&&old.activity)task.activity=structuredClone(old.activity);
+        if(task.calendarLink===undefined&&old.calendarLink)task.calendarLink=structuredClone(old.calendarLink);
+        if(task.sunsamaImport===undefined&&old.sunsamaImport)task.sunsamaImport=structuredClone(old.sunsamaImport);
     }
 }

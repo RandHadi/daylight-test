@@ -15,9 +15,25 @@ const row = z.object({
     comments:z.array(z.unknown()).default([]),url:z.string().max(2000).default(''),sequenceRule:z.string().max(1000).default(''),
     backlogPriority:z.string().default(''),latestDailyPriority:z.string().default(''),dailyPriority:z.array(z.object({priority:z.string(),day:date})).default([]),
 });
-const metadata = z.object({_id:z.string(),scheduledDate:z.string(),isBacklogged:z.boolean(),completed:z.boolean(),isArchived:z.boolean(),deleted:z.boolean(),completedOnDate:date.optional(),backlogHorizon:z.string().optional(),dailyPriority:z.string().optional(),sortOrder:z.number().optional(),integrationDetails:z.object({url:z.string().optional()}).optional()});
+const metadata = z.object({_id:z.string(),scheduledDate:z.string(),isBacklogged:z.boolean(),completed:z.boolean(),isArchived:z.boolean(),deleted:z.boolean(),completedOnDate:date.optional(),backlogHorizon:z.string().optional(),dailyPriority:z.string().optional(),sortOrder:z.number().optional(),recurrenceRule:z.string().max(1000).optional(),integrationDetails:z.object({url:z.string().optional()}).optional()});
 const bundleSchema = z.object({format:z.literal('daylight-sunsama-export'),version:z.literal(1),timezone:z.string().refine(validTimezone),tasks:z.array(row).min(1).max(5000),metadata:z.array(metadata).max(5000).default([])});
 export type ImportReport = {tasks:number;completed:number;backlog:number;channels:number;subtasks:number;sessions:number;timeboxes:number;skipped:number;recurrenceNotes:number;dateMarkers:number;warnings:string[]};
+export function parseSunsamaExport(input:unknown,timezone='UTC') {
+    const parsed=bundleSchema.safeParse(Array.isArray(input)?{format:'daylight-sunsama-export',version:1,timezone,tasks:input}:input);
+    if(!parsed.success)throw new Error(`Invalid Sunsama export field: ${parsed.error.issues[0].path.join('.')}. No records were changed.`);
+    return parsed.data;
+}
+export function importedMeetingMinutes(raw:z.infer<typeof row>):number|undefined {
+    if(raw.scheduledTime.some(e=>!e.autoImported))return;
+    const meetings=raw.scheduledTime.filter(e=>e.autoImported&&e.endDate&&Date.parse(e.endDate)>Date.parse(e.startDate));
+    if(!meetings.length||raw.subtasks.some(t=>(t.timeEstimate||0)>0))return;
+    return Math.min(720,Math.round(meetings.reduce((n,e)=>n+(Date.parse(e.endDate!)-Date.parse(e.startDate))/60000,0)));
+}
+export function sunsamaImportInfo(raw:z.infer<typeof row>,m?:z.infer<typeof metadata>):NonNullable<Task['sunsamaImport']> {
+    const calendars=[...new Set(raw.scheduledTime.filter(e=>e.autoImported).map(e=>e.calendarId).filter(Boolean))];
+    const repeatText=m?.recurrenceRule||raw.sequenceRule||'';
+    return {sourceId:raw.id,originalDate:raw.startDate||null,originalMinutes:typeof raw.timeEstimate==='number'?raw.timeEstimate:0,meeting:raw.scheduledTime.some(e=>e.autoImported),calendarId:calendars.length===1?calendars[0]:undefined,repeatText:repeatText||undefined,repeatReview:repeatText?'pending':undefined};
+}
 
 function key(value:string) {
     let h=BigInt('14695981039346656037');
@@ -37,9 +53,7 @@ const backlogPriority=(value:string):NonNullable<Task['backlogPriority']>=>({urg
 const buckets:Record<string,string>={'in the next two weeks':'Next week or two','in the next month':'Next month','in the next quarter':'Next quarter','in the next year':'Next year',someday:'Someday',never:'Never'};
 
 export function mergeSunsama(current:State,input:unknown) {
-    const parsed=bundleSchema.safeParse(Array.isArray(input)?{format:'daylight-sunsama-export',version:1,timezone:current.settings.timezone||'UTC',tasks:input}:input);
-    if(!parsed.success)throw new Error(`Invalid Sunsama export field: ${parsed.error.issues[0].path.join('.')}. No records were changed.`);
-    const source=parsed.data,s=structuredClone(current),zone=s.settings.timezone||source.timezone;
+    const source=parseSunsamaExport(input,current.settings.timezone||'UTC'),s=structuredClone(current),zone=s.settings.timezone||source.timezone;
     const meta=new Map(source.metadata.map(t=>[t._id,t]));
     if(new Set(source.tasks.map(t=>t.id)).size!==source.tasks.length)throw new Error('The export contains duplicate task IDs. No records were changed.');
     const report:ImportReport={tasks:0,completed:0,backlog:0,channels:0,subtasks:0,sessions:0,timeboxes:0,skipped:0,recurrenceNotes:0,dateMarkers:0,warnings:[]};
@@ -58,7 +72,7 @@ export function mergeSunsama(current:State,input:unknown) {
         const completedOn=m?.completedOnDate||(raw.completedDate?zonedParts(Date.parse(raw.completedDate),zone).day:undefined);
         const additions=[raw.sequenceRule?`Sunsama repeat pattern: ${raw.sequenceRule}. Imported occurrences are preserved; review before enabling a new repeating series in Daylight.`:''];
         if(raw.comments.length)additions.push('Sunsama comments:\n'+raw.comments.map(c=>typeof c==='string'?notesText(c):JSON.stringify(c)).join('\n'));
-        const t:Task={id:taskId,title:raw.text,date:planned,channel:ch.id,minutes:typeof raw.timeEstimate==='number'?raw.timeEstimate:0,actual:0,done,
+        const t:Task={id:taskId,title:raw.text,date:planned,channel:ch.id,minutes:importedMeetingMinutes(raw)??(typeof raw.timeEstimate==='number'?raw.timeEstimate:0),actual:0,done,sunsamaImport:sunsamaImportInfo(raw,m),
             notes:[notesText(raw.notes),...additions].filter(Boolean).join('\n\n'),subtasks:[],priority:priority(m?.dailyPriority||raw.latestDailyPriority),recurrence:'none',due:raw.dueDate,
             archived:m?.isArchived||false,backlogPriority:backlogPriority(raw.backlogPriority),bucket:buckets[m?.backlogHorizon||'']||'Someday',pinned:true};
         if(completedOn)t.completedOn=completedOn;

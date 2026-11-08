@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { State } from '@/lib/planner-model';
 import type { ImportReport } from '@/lib/sunsama-import';
-export type ImportResult={state:State;revision:number;backupId:string;report:ImportReport};
+export type ImportResult={repairReport?:import('@/lib/sunsama-repair').RepairReport;state:State;revision:number;backupId:string;report:ImportReport};
 export function SunsamaImportPanel({draft,hasConflict,onImport}:{draft:State;hasConflict:boolean;onImport:(source:unknown)=>Promise<ImportResult>}){
     const [text,setText]=useState(''),[report,setReport]=useState<ImportReport|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[success,setSuccess]=useState(false);
     const [backups,setBackups]=useState<{id:string;createdAt:number}[]>([]),file=useRef<HTMLInputElement>(null);

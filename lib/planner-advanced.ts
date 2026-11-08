@@ -1,5 +1,7 @@
 import { type State, type Task, type Block, type RecurrenceRule, type Series, uid, task, shiftDate, fromKey, weekOf, finishTimer, timerSeconds } from './planner-model.ts';
 import { zonedParts, wallToEpoch } from './calendar-time.ts';
+import {reportedActual} from './time-ledger.ts';
+import {linkedCalendarTask,linkCalendarTask} from './calendar-links.ts';
 export const buckets = ['Next week or two', 'Next month', 'Next quarter', 'Next year', 'Someday', 'Never'];
 export const defaultSettings = { rollover: true, archiveAfter: 4, autoReschedule: false, gap: 0, splitTasks: true, autoSort: false, pomodoro: false, focusMinutes: 25, breakMinutes: 5, notifications: false, theme: 'light' as const, personalContexts: ['Personal'] };
 export function upgradeState(s: State): State {
@@ -101,7 +103,7 @@ export function generateOccurrences(s: State, today: string, horizon = 21): numb
                 return added;
             if (!occursOn(series, day) || s.tasks.some(t => t.seriesId === series.id && (t.occurrence || t.date) === day))
                 continue;
-            const t: Task = { ...structuredClone(series.template), id: uid(), seriesId: series.id, occurrence: day, date: day, done: false, actual: 0, archived: false, edited: false, deleted: undefined, completedOn: undefined, rolloverSince: undefined, rolloverCount: 0, generatedFrom: series.template.id, subtasks: series.template.subtasks.map(st => ({ ...st, id: uid(), done: false, actual: 0, mergedTaskId: undefined })) };
+            const t: Task = { ...structuredClone(series.template), id: uid(), sunsamaImport:undefined, calendarLink:undefined, seriesId: series.id, occurrence: day, date: day, done: false, actual: 0, archived: false, edited: false, deleted: undefined, completedOn: undefined, rolloverSince: undefined, rolloverCount: 0, generatedFrom: series.template.id, subtasks: series.template.subtasks.map(st => ({ ...st, id: uid(), done: false, actual: 0, mergedTaskId: undefined })) };
             s.tasks.push(t);
             added++;
         }
@@ -138,7 +140,7 @@ export function maintainDay(s: State, today: string): {
     s.lastMaintenance = today;
     return { rolled, archived, generated };
 }
-export function dailyActual(s: State, day: string, channel?: string): number { return (s.sessions || []).filter(e => e.day === day && (!channel || e.channel === channel)).reduce((n, e) => n + e.seconds / 60, 0); }
+export function dailyActual(s: State, day: string, channel?: string): number { return reportedActual(s,day,channel); }
 export function taskActualOn(s: State, id: string, day: string): number { return (s.sessions || []).filter(e => e.taskId === id && e.day === day).reduce((n, e) => n + e.seconds / 60, 0); }
 export function setActual(s: State, id: string, minutes: number, day: string): void {
     const t = s.tasks.find(t => t.id === id);
@@ -174,7 +176,7 @@ export function scheduleDay(s: State, day: string, options: {reschedule?: boolea
     const gap = copy.settings.gap || 0, missed: string[] = [], created: Block[] = [];
     if (options.reschedule) copy.blocks = copy.blocks.filter(b => b.date !== day || !b.taskId || b.pinned || copy.tasks.find(t => t.id === b.taskId)?.done || (options.taskId && b.taskId !== options.taskId));
     const weekday=fromKey(day).getDay();
-    const tasks=copy.tasks.filter(t=>t.date===day&&!t.archived&&!t.done&&!t.deleted&&(!options.taskId||t.id===options.taskId));
+    const tasks=copy.tasks.filter(t=>t.date===day&&!t.archived&&!t.done&&!t.deleted&&!t.calendarLink&&(!options.taskId||t.id===options.taskId));
     // Reserve approximate times for rigid recurrence before filling flexible work.
     const ordered=[...tasks.filter(t=>t.rigid&&t.preferred!==undefined).sort((a,b)=>a.preferred!-b.preferred!),...tasks.filter(t=>!t.rigid||t.preferred===undefined)];
     for (const t of ordered) {
@@ -222,7 +224,7 @@ export function mergeTask(s: State, sourceId: string, targetId: string): boolean
     return true;
 }
 export function duplicateTask(s: State, id: string, day: string | null): Task | undefined { const original = s.tasks.find(t => t.id === id); if (!original)
-    return; const t = { ...structuredClone(original), id: uid(), comments: [], activity: [], date: day, done: false, actual: 0, recurrence: 'none' as const, seriesId: undefined, occurrence: undefined, completedOn: undefined, deleted: undefined, archived: false, sample: false, subtasks: original.subtasks.map(st => ({ ...st, id: uid(), done: false, actual: 0, mergedTaskId: undefined })) }; s.tasks.push(t); return t; }
+    return; const t = { ...structuredClone(original), id: uid(), sunsamaImport:undefined, calendarLink:undefined, sourceUrl:original.sourceUrl?.startsWith('daylight:event:')?undefined:original.sourceUrl, comments: [], activity: [], date: day, done: false, actual: 0, recurrence: 'none' as const, seriesId: undefined, occurrence: undefined, completedOn: undefined, deleted: undefined, archived: false, sample: false, subtasks: original.subtasks.map(st => ({ ...st, id: uid(), done: false, actual: 0, mergedTaskId: undefined })) }; s.tasks.push(t); return t; }
 export function capture(text: string, s: State, day: string): Task {
     let title = text.trim(), date: string | null = day, minutes = 30, channel = s.settings.defaultChannel || s.channels[0].id, priority: Task['priority'] = 'normal';
     const take = (pattern: RegExp, fn: (m: RegExpMatchArray) => void) => { const m = title.match(pattern); if (m) {
@@ -248,8 +250,8 @@ export function capture(text: string, s: State, day: string): Task {
         t.sourceUrl = url[0];
     return t;
 }
-export function importMeeting(s: State, b: Block): Task { const existing = s.tasks.find(t => t.sourceUrl === `daylight:event:${b.id}`); if (existing)
-    return existing; const t = task(b.title, b.date, s.settings.defaultChannel || s.channels[0].id, Math.min(720, b.minutes)); t.sourceUrl = `daylight:event:${b.id}`; s.tasks.push(t); return t; }
+export function importMeeting(s: State, b: Block): Task { const existing = linkedCalendarTask(s,b); if (existing)
+    return existing; const t = task(b.title, b.date, s.settings.defaultChannel || s.channels[0].id, Math.min(720, b.minutes)); t.sourceUrl = `daylight:event:${b.id}`; s.tasks.push(t); if(b.provider==='google'&&b.externalEventId)linkCalendarTask(s,t.id,b.id); return t; }
 
 export function saveTask(s:State,draft:Task,start:number|null,today:string,applyFuture:boolean|'all'=false):void {
  const total=draft.subtasks.reduce((n,st)=>n+(st.minutes||0),0)+(draft.unallocatedMinutes||0);if(total>0)draft.minutes=total;

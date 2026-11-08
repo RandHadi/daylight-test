@@ -3,10 +3,11 @@ import { useState, useRef } from 'react';
 import { Play, Pause, Check, X, ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { type State, type Task, type WorkWindow, duration, inputTime, parseTime, clockLabel } from '@/lib/planner-model';
 import { actualOn, setDayActual, workingWindow } from '@/lib/planner-parity';
+import {reportingEntries} from '@/lib/time-ledger';
 type Change = (fn: (s: State) => void, undo?: boolean) => void;
 
 export function WeeklyBreakdown({data,days}:{data:State;days:string[]}) {
-  const sessions=(data.sessions||[]).filter(e=>days.includes(e.day));
+  const sessions=reportingEntries(data).filter(e=>days.includes(e.day));
   const channelRows=data.channels.map(c=>({name:c.name,color:c.color,minutes:sessions.filter(e=>e.channel===c.id).reduce((n,e)=>n+e.seconds/60,0)})).filter(c=>c.minutes>0);
   const objectiveRows=data.objectives.filter(o=>o.week===days[0]||o.weeks?.includes(days[0])).map(o=>({name:o.title,minutes:sessions.filter(e=>data.tasks.find(t=>t.id===e.taskId)?.objective===o.id).reduce((n,e)=>n+e.seconds/60,0)}));
   const save=()=>{const lines=[`# Weekly review: ${days[0]} – ${days[6]}`,'',`Tracked time: ${duration(sessions.reduce((n,e)=>n+e.seconds/60,0))}`,'','## Channels',...channelRows.map(c=>`- ${c.name}: ${duration(c.minutes)}`),'','## Objectives',...objectiveRows.map(o=>`- ${o.name}: ${duration(o.minutes)}`),'',data.weeklyReflections?.[days[0]]||'',...days.flatMap(day=>data.reflections[day]?[`\n## ${day}`,data.reflections[day]]:[])];const url=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/markdown'}));const a=document.createElement('a');a.href=url;a.download=`daylight-week-${days[0]}.md`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};

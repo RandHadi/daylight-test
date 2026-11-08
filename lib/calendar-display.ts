@@ -1,6 +1,7 @@
 import {type State,type Task,type Block,shiftDate,duration} from './planner-model.ts';
 import {scheduleDay} from './planner-advanced.ts';
 import {zonedParts,wallToEpoch} from './calendar-time.ts';
+import {linkedCalendarTask} from './calendar-links.ts';
 
 export type CalendarDisplay = {
   local: boolean;
@@ -37,7 +38,7 @@ export function combineCalendarItems(items:CalendarItem[]):CalendarItem[]{
   for(const b of other){const key=matchingSlot(b);exactGroups.set(key,[...(exactGroups.get(key)||[]),b]);}
   const result:CalendarItem[]=[];
   for(const group of exactGroups.values()){
-    const events=group.filter(b=>b.provider==='google'&&!b.busyOnly),tasks=group.filter(b=>b.taskId&&!b.allDay&&!(b.layer==='projection'&&b.virtual));
+    const events=group.filter(b=>b.provider==='google'&&!b.busyOnly),tasks=group.filter(b=>b.provider!=='google'&&b.taskId&&!b.allDay&&!(b.layer==='projection'&&b.virtual));
     // Two calendars or two tasks with the same title/time are ambiguous: keep them separate.
     if(events.length===1&&tasks.length===1){const pair=new Set([events[0],tasks[0]]);result.push(combined([...pair]),...group.filter(b=>!pair.has(b)));}
     else result.push(...group);
@@ -84,11 +85,11 @@ export function calendarItems(s:State,day:string,{filter=()=>true,completed=true
       if(prefs.hiddenGoogleCalendars.includes(b.externalCalendarId||''))return [];
       const key=matchingSlot(b),matches=plannedTasks.get(key);
       // Only a unique matching timebox establishes a link; unrelated meetings stay visible.
-      const linkedTask=b.taskId||(googleCounts.get(key)===1&&matches?.size===1?[...matches][0]:undefined);
+      const linkedTask=linkedCalendarTask(s,b)?.id||b.taskId||(googleCounts.get(key)===1&&matches?.size===1?[...matches][0]:undefined);
       if(!prefs.comparison&&linkedTask&&actualTasks.has(linkedTask))return [];
       const t=linkedTask?tasks.get(linkedTask):undefined;
       if(allowed(t))visibleEventTasks.add(t!.id);
-      return [{...b,layer:'event' as const,completed:prefs.completions&&allowed(t)&&t!.done}];
+      return [{...b,taskId:linkedTask,layer:'event' as const,completed:prefs.completions&&allowed(t)&&t!.done}];
     }
     if(!b.taskId)return prefs.local?[{...b,layer:'event' as const}]:[];
     const t=tasks.get(b.taskId);if(!prefs.local||!allowed(t))return [];

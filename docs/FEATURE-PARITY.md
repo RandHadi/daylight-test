@@ -184,3 +184,14 @@ Reference: Sunsama's playlist documentation distinguishes generated projections 
 - Follow-up duplicate check: identical time records or timeboxes for the same task share one visual card, with every source retained in the details. Distinct task IDs and differing intervals stay separate; time records and totals are unchanged.
 
 - Duration-only Sunsama manual time is displayed as a day total. New imports record whether a time interval was actually supplied; older imported manual entries without that evidence retain their records and totals but no longer draw inferred clock intervals. Recorded timer sessions remain timed.
+
+
+## November 8 audit fixes — data reliability
+
+- Unified reporting ledger for Analytics, daily/weekly review, shutdown and weekly export: archived history retained; deleted/orphan entries excluded consistently; legacy totals counted only without session history.
+- Sunsama auto-imported meeting estimates use scheduled event duration. Existing imports have a preview/apply repair, with a saved pre-repair cloud/draft backup and revision check. Edited estimates are retained.
+- Imported source metadata and repeat patterns survive saves. A recurrence review groups possible series, exposes members/rule/start date, and requires explicit enable or keep-as-one-off. Unknown rules are not invented.
+- Exact unambiguous imported meetings can be linked during repair. Changed-time matches require explicit review. Links use calendar/event identity, prevent Add-as-task duplication, follow unchanged task fields, and preserve completed history. Failed calendars retain previous data.
+- Additional workflow/layout findings from the audit remain open. No new provider integrations are included in this batch.
+
+Local validation: regression tests cover idempotent repairs, manual edits, changed/moved/cancelled provider events, ambiguous matches, stable identities, reporting agreement, recurrence duplication and older-client field preservation. Local API checks verify read-only preview, backup fidelity, stale-revision rejection and idempotence. Synthetic browser checks verify linking, repeat enable and saved reload. Hosted verification is recorded after deployment.

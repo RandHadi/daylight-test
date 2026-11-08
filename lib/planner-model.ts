@@ -38,6 +38,8 @@ export type Channel = {
     hours?: WorkWindow[];
 };
 export type Task = {
+    sunsamaImport?: { sourceId:string; originalDate:string|null; originalMinutes:number; meeting:boolean; calendarId?:string; repeatText?:string; repeatReview?:'pending'|'enabled'|'kept' };
+    calendarLink?: {calendarId:string;eventId:string;lastDate:string;lastMinutes:number;lastTitle:string;status:'linked'|'unavailable'}|null;
     comments?: { id: string; body: string; author: string; at: string; attachments?: TaskAttachment[] }[];
     activity?: { id: string; text: string; at: string }[];
     id: string;

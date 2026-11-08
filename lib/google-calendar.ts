@@ -1,5 +1,6 @@
 import { type Block, type State, shiftDate } from './planner-model.ts';
 import { wallToEpoch, zonedParts, validTimezone } from './calendar-time.ts';
+import {reconcileCalendarLinks} from './calendar-links.ts';
 export const READ_SCOPES = ['openid', 'email', 'https://www.googleapis.com/auth/calendar.calendarlist.readonly', 'https://www.googleapis.com/auth/calendar.events.readonly'];
 export const WRITE_SCOPE = 'https://www.googleapis.com/auth/calendar.events.owned';
 export const BUSY_SCOPE = 'https://www.googleapis.com/auth/calendar.events.freebusy';
@@ -215,5 +216,6 @@ export function applyCalendarSync(state: State, sync: CalendarSync) {
     if (next.length > 4900)
         throw new Error('There are too many calendar events to save. Choose fewer calendars.');
     state.blocks = next;
+    reconcileCalendarLinks(state,sync);
 }
-export function removeGoogleCalendars(state: State, keep: string[] = []) { const ids = new Set(keep); state.blocks = state.blocks.filter(b => b.provider !== 'google' || ids.has(b.externalCalendarId || '')); }
+export function removeGoogleCalendars(state: State, keep: string[] = []) { const ids = new Set(keep); state.blocks = state.blocks.filter(b => b.provider !== 'google' || ids.has(b.externalCalendarId || '')); for(const t of state.tasks)if(t.calendarLink&&!ids.has(t.calendarLink.calendarId))t.calendarLink.status='unavailable'; }
