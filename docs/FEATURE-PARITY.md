@@ -119,3 +119,9 @@ Browser-observed source behavior is documented in `sunsama-walkthrough-2026-11-0
 - Added an integrations hub for existing Google Calendar, ICS files, and Sunsama imports. New live providers explicitly deferred by the user on this turn.
 
 Validation: 80 unit tests and TypeScript checks passed. Browser checks covered all six view layouts, event date targeting, folder creation/task inheritance, analytics CSV, searchable shortcuts, panel shortcuts, view reload, and a 390px mobile layout with the rail fixed on the right.
+
+## v13 — calendar scrolling
+
+Day, three-day, weekday, and week calendars now scroll horizontally through a replenishing date window and vertically through the hours. Date headers and hour labels remain fixed on their respective axes. Horizontal movement preserves the vertical hour position. Month view scrolls between full months with horizontal snapping. Arrow keys scroll the focused calendar surface. Date windows cross year/month boundaries and weekday mode skips weekends in both directions.
+
+Validation: 83 unit tests and TypeScript checks passed. Local browser verification covered horizontal movement in both directions, edge replenishment, vertical-hour preservation, sticky date headers, month/year crossing, weekday windows, and a 390px layout without page overflow.
